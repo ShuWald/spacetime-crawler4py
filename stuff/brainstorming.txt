@@ -39,3 +39,12 @@ Crawls for words and links, avoids less valuable files
 ### Redirect Detection
 Crawler validates/rejects destination
 Frontier also needs to avoid infinite redirect loops by recording alias
+
+### Filter URLs
+Cut off invalid URL destinations right away
+\- Includes links disallowed by robots.txt
+How to enforce?
+\- Scrape robots.txt first and modify self site-rejection parameters 
+    \- Hardcode?
+    \- Initial scrape -> pass parameters into real crawler instance
+    \- Self modify the crawler if worder detects robots.txt (wouldn't fix past mistakes)
