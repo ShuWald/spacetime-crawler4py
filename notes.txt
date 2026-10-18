@@ -1,6 +1,0 @@
-
-Requirements from lecture:
-- handle websites with tarpits
-- handle server not responding / high latency
-- handle cache server control-C
-
