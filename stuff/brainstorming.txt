@@ -1,0 +1,41 @@
+## Frontier
+
+### Ready
+Stores URLs available for crawling
+
+#### Scoring?
+Some kind of way to deprioritize or remove less useful URLs
+\- Avoids less valuable pages or file formats
+\- Notes potentially useful but expensive resources
+\- Ex. Chains of empty pages, infinite loops, useless subdomains
+
+### Multithreading Issues
+
+#### Active URLs
+Somehow need to store URLs being actively crawled
+\- Locking mechanism to avoid multiple workers claiming the same URL
+\- Assists in deciding politeness delay
+Actually, this can just be built into the main Frontier data structure
+\- Using an "in progress" label
+\- Storing accessed time for politeness
+    \- Sort by time for efficiency
+
+### Domain registery
+Stores information about the four authorized domains. 
+
+
+## Visited
+Stores information on all visited URLs to avoid recrawling/loops
+
+
+## Crawler
+
+### URL Parsing
+Using lxml or BeutifulSoup?
+Crawls for words and links, avoids less valuable files
+\- Reject unsupported resources instantly
+\- Rest of URLs sent to Frontier scoring to determine
+
+### Redirect Detection
+Crawler validates/rejects destination
+Frontier also needs to avoid infinite redirect loops by recording alias
