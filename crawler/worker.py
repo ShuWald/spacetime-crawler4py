@@ -41,7 +41,7 @@ class Worker(Thread):
                 self._update_cache(tbd_url, parse_url)
 
             if self.robots_cache[domain].can_crawl(tbd_url): # check if we can crawl
-                resp = download(tbd_url, self.config, self.logger)
+                resp = download(tbd_url, self.config.USERAGENT, self.logger)
                 self.logger.info(
                     f"Downloaded {tbd_url}, status <{resp.status}>, "
                     f"using cache {self.config.cache_server}.")
