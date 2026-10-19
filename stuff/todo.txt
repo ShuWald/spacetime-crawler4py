@@ -1,1 +1,4 @@
+## Scraper
 
+`extract_next_links(url, resp)`
+\- Outputs JSON with additional detials such as redirects, unauthorized redirects, failures/error types

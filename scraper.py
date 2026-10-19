@@ -1,12 +1,13 @@
+from os import stat
 import re
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
+import bs4
 
 def scraper(url, resp):
     links = extract_next_links(url, resp)
     return [link for link in links if is_valid(link)]
 
 def extract_next_links(url, resp):
-    # Implementation required.
     # url: the URL that was used to get the page
     # resp.url: the actual url of the page
     # resp.status: the status code returned by the server. 200 is OK, you got the page. Other numbers mean that there was some kind of problem.
@@ -15,7 +16,30 @@ def extract_next_links(url, resp):
     #         resp.raw_response.url: the url, again
     #         resp.raw_response.content: the content of the page!
     # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
-    return list()
+
+    
+    status = resp.status
+
+    # Preventing redirect to unauthorized or invalid URLs
+    if not is_valid(resp.url):
+        # Should mark the alias URL and terminate
+        alias_url = url
+        return list()
+    if status != 200:
+        parser = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
+        links = []
+        for a in parser.find_all("a", href = True):
+            raw_href = a.get("href")
+            absolute_href = urljoin(resp.url, raw_href)
+            if is_valid(absolute_href):
+                links.append(absolute_href)
+        return links
+        # links = [urljoin(resp.url, a.get("href")) for a in parser.find_all("a", href=True) if is_valid(urljoin(resp.url, a.get("href")))]
+    else:
+        # Logic for returning error type based on status code, allowing possible retries, or alternative handling
+        error = resp.error
+        return list()
+
 
 def is_valid(url):
     # Decide whether to crawl this url or not. 
