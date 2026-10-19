@@ -1,7 +1,7 @@
 import os
 import logging
 from hashlib import sha256
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlsplit, urlunsplit
 
 def get_logger(name, filename=None):
     logger = logging.getLogger(name)
@@ -23,13 +23,32 @@ def get_logger(name, filename=None):
 
 
 def get_urlhash(url):
-    parsed = urlparse(url)
-    # everything other than scheme.
-    return sha256(
-        f"{parsed.netloc}/{parsed.path}/{parsed.params}/"
-        f"{parsed.query}/{parsed.fragment}".encode("utf-8")).hexdigest()
+    normalized_url = normalize(url) # Currently normalizes while keeping fragments
+    parts = urlsplit(normalized_url)
 
-def normalize(url):
-    if url.endswith("/"):
-        return url.rstrip("/")
-    return url
+    # Still everything except the scheme
+    hash_input = urlunsplit((
+        "",              # Exclude scheme
+        parts.netloc,
+        parts.path,
+        parts.query,
+        parts.fragment
+    ))
+
+    return sha256(hash_input.encode("utf-8")).hexdigest()
+
+# Normalize a URL, lowercases the scheme and netloc, ensures a path, and optionally keeps fragments
+def normalize(url, keepFragments=True):
+    parts = urlsplit(url)
+    scheme = parts.scheme.lower()
+    netloc = parts.netloc.lower()
+    path = parts.path or "/"
+    fragment = parts.fragment if keepFragments else ""
+
+    return urlunsplit((
+        scheme,
+        netloc,
+        path,
+        parts.query,
+        fragment
+    ))

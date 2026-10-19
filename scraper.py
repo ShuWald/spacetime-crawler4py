@@ -2,43 +2,56 @@ from os import stat
 import re
 from urllib.parse import urljoin, urlparse
 import bs4
+from utils import normalize
+
+
+# url: the URL that was used to get the page
+# resp.url: the actual url of the page
+# resp.status: the status code returned by the server. 200 is OK, you got the page. Other numbers mean that there was some kind of problem.
+# resp.error: when status is not 200, you can check the error here, if needed.
+# resp.raw_response: this is where the page actually is. More specifically, the raw_response has two parts:
+#         resp.raw_response.url: the url, again
+#         resp.raw_response.content: the content of the page!
+
 
 def scraper(url, resp):
-    links = extract_next_links(url, resp)
-    return [link for link in links if is_valid(link)]
-
-def extract_next_links(url, resp):
-    # url: the URL that was used to get the page
-    # resp.url: the actual url of the page
-    # resp.status: the status code returned by the server. 200 is OK, you got the page. Other numbers mean that there was some kind of problem.
-    # resp.error: when status is not 200, you can check the error here, if needed.
-    # resp.raw_response: this is where the page actually is. More specifically, the raw_response has two parts:
-    #         resp.raw_response.url: the url, again
-    #         resp.raw_response.content: the content of the page!
-    # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
-
-    
+    # We can also always just push the status/error/redirect handling up higher
     status = resp.status
-
+    alias_url = url if url != resp.url else None
     # Preventing redirect to unauthorized or invalid URLs
     if not is_valid(resp.url):
         # Should mark the alias URL and terminate
-        alias_url = url
-        return list()
+        # For now just returns the alias URL into list
+        return [alias_url]
     if status != 200:
-        parser = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
-        links = []
-        for a in parser.find_all("a", href = True):
-            raw_href = a.get("href")
-            absolute_href = urljoin(resp.url, raw_href)
-            if is_valid(absolute_href):
-                links.append(absolute_href)
-        return links
-        # links = [urljoin(resp.url, a.get("href")) for a in parser.find_all("a", href=True) if is_valid(urljoin(resp.url, a.get("href")))]
-    else:
         # Logic for returning error type based on status code, allowing possible retries, or alternative handling
+        # For now just return the status and error into list
         error = resp.error
-        return list()
+        return list((status, error))
+    # Relies on extract_next_links to validate, normalize, return absolute links
+    links = extract_next_links(resp)
+    # If there was an alias, mark the destination URL to avoid revisiting
+    # Since ideally the frontier should already know the original URL(alias)
+    # For now just append to links list
+    if alias_url:
+        links.append(resp.url)
+    return links
+
+
+# Offloaded the redirect/unauthorized URL handling to the main scraper function, so link should be valid
+def extract_next_links(resp):
+    parser = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
+    links = []
+    for a in parser.find_all("a", href = True):
+        raw_href = a.get("href")
+        absolute_href = urljoin(resp.url, raw_href)
+        final_href = normalize(absolute_href)
+        if is_valid(final_href):
+            links.append(final_href)
+    return links
+
+    # One-liner cuz why not
+    #links = [normalize(urljoin(resp.url, a.get("href"))) for a in parser.find_all("a", href=True) if is_valid(normalize(urljoin(resp.url, a.get("href"))))]
 
 
 def is_valid(url):
