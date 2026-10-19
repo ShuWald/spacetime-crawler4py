@@ -30,12 +30,6 @@ def get_urlhash(url):
         f"{parsed.query}/{parsed.fragment}".encode("utf-8")).hexdigest()
 
 def normalize(url):
-    parsed = urlparse(url)
-    loweredNetLoc = parsed.netloc.lower()
-    url = parsed._replace(netloc = loweredNetLoc).geturl()
-    splitURL = url.split("#")
-    url = splitURL[0]
     if url.endswith("/"):
-        url = url.rstrip("/")
-
+        return url.rstrip("/")
     return url
