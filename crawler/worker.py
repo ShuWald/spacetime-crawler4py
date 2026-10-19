@@ -35,9 +35,10 @@ class Worker(Thread):
             # Robot(domain, user_agent, robots.txt)
             # Robot.can_crawl(tbd_url)
             # if in, compare, if allowed, do rest, if not, skip
-
+            parse_url = urlparse(tbd_url)
+            domain = parse_url.netloc
             if self.robots_cache.get(domain) == None: # never before seen domain, add Robot to cache
-                self._update_cache(tbd_url)
+                self._update_cache(tbd_url, parse_url)
 
             if self.robots_cache[domain].can_crawl(tbd_url): # check if we can crawl
                 resp = download(tbd_url, self.config, self.logger)
@@ -50,12 +51,12 @@ class Worker(Thread):
                 self.frontier.mark_url_complete(tbd_url)
                 time.sleep(self.config.time_delay)
 
-    def _update_cache(self, tbd_url):
-        '''updates '''
-        parse_url = urlparse(tbd_url)
-        domain = parse_url.netloc
-        
-        robots_url = urlunparse((parse_url.scheme, domain, "", "", "", ""))
+    def _update_cache(self, tbd_url, parse_url):
+        '''updates robots_cache'''
+        robots_url = urlunparse((parse_url.scheme, parse_url.netloc, "", "", "", ""))
+
         robots_txt = download(robots_url, self.config, self.logger)
-        self.robots_cache[domain] = Robot(domain, self.config, robots_txt)
+
+        self.robots_cache[parse_url.netloc] = Robot(parse_url.netloc, self.config, robots_txt)
+
         time.sleep(self.config.time_delay) # delete if no need for downtime after acessing a robots.txt
