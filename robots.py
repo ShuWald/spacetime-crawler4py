@@ -4,8 +4,8 @@ import string
 
 """
 Queriable representation of a robots.txt file. Example usage:
-    robots = Robots("ics.uci.edu", "User-agent: *\nDisallow: /people")
-    print(robots.can_crawl("MyAgent", "https://ics.uci.edu/people")) # False
+    robots = Robots("ics.uci.edu", "My-Agent", "User-agent: *\nDisallow: /people")
+    print(robots.can_crawl("https://ics.uci.edu/people")) # False
 """
 class Robots:
     re_useragent = re.compile(r"^\W*user-agent\W*:([^#]*)", flags=re.I)
