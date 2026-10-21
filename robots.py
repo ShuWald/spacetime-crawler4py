@@ -44,6 +44,8 @@ class Robots:
         for line in robotstxt.splitlines():
             if line.strip() == "":
                 applicable = True
+            elif r := Robots.re_sitemap.search(line):
+                sitemaps.append(r.group(1).strip())
             if r := Robots.re_useragent.search(line):
                 agent = r.group(1)
                 applicable = applicable or Robots.agent_matches(self._user_agent, r.group(1).strip())
@@ -53,12 +55,10 @@ class Robots:
                     rules.append(('allow', Robots._pattern_regex(r.group(1).strip())))
                 elif r := Robots.re_disallow.search(line):
                     rules.append(('disallow', Robots._pattern_regex(r.group(1).strip())))
-                elif r := Robots.re_sitemap.search(line):
-                    sitemaps.append(r.group(1).strip())
         return rules, sitemaps
 
     def get_sitemaps(self):
-        return [sitemap for keyword, sitemap in self._rules if keyword == 'sitemap']
+        return self._sitemaps
 
     def can_crawl(self, url: str):
         """Accepts a fully-qualified URL, not a path. Asserts on url domain. TODO: Allow logging?"""

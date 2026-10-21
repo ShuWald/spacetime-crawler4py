@@ -54,5 +54,20 @@ class TestRobots(unittest.TestCase):
         self.assertFalse(a.can_crawl("https://ics.uci.edu/home"))
         self.assertFalse(a.can_crawl("https://ics.uci.edu/home/page"))
 
+    def test_sitemaps(self):
+        a = Robots("ics.uci.edu", "MyAgent", """
+            Sitemap: http://www.example.com/sitemap-host1.xml
+
+            User-Agent: OtherAgent
+            User-Agent: MyAgent
+            Allow: /people
+            Sitemap: http://www.example.com/sitemap-host2.xml
+            Disallow: /home
+
+            Sitemap: http://www.example.com/sitemap-host3.xml
+            """)
+        self.assertEqual(a.get_sitemaps(), ["http://www.example.com/sitemap-host1.xml", "http://www.example.com/sitemap-host2.xml", "http://www.example.com/sitemap-host3.xml"])
+
+
 if __name__ == "__main__":
     unittest.main()
