@@ -31,7 +31,6 @@ class Robots:
     def agent_matches(cls, agent, pattern) -> bool:
         if pattern == "*":
             return True
-        print("comparing",cls._normalize_user_agent(pattern), agent.lower() )
         return cls._normalize_user_agent(pattern) in agent.lower()
 
     @classmethod
@@ -43,9 +42,7 @@ class Robots:
         sitemaps: list[str] = []
         applicable = False
         for line in robotstxt.splitlines():
-            print("checking line", line, "vs", Robots.re_useragent)
             if r := Robots.re_useragent.search(line):
-                print("user agent found", line)
                 agent = r.group(1)
                 applicable = Robots.agent_matches(self._user_agent, r.group(1).strip())
                 continue
@@ -64,12 +61,12 @@ class Robots:
     def can_crawl(self, url: str):
         """Accepts a fully-qualified URL, not a path. Asserts on url domain. TODO: Allow logging?"""
         parse = urlparse(url)
+        # TODO: remove at deployment
         assert parse.netloc ==  self._domain
         path = parse.path
 
         allow_rule_size = ("allow", "", 0)
         for allow, rule in self._rules:
-            print(f"matching url {url} against rule {rule}")
             if match := rule.search(url):
                 size = len(match.group())
                 if size > allow_rule_size[2] or (size == allow_rule_size[2] and allow == 'allow'):
