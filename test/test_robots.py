@@ -56,6 +56,22 @@ class TestRobots(unittest.TestCase):
         self.assertFalse(a.can_crawl("https://ics.uci.edu/home"))
         self.assertFalse(a.can_crawl("https://ics.uci.edu/home/page"))
 
+    def test_union_blocks(self):
+        a = Robots("ics.uci.edu", "MyAgent", """
+            User-agent: MyAgent
+            Allow: /people/about
+
+            user-agent: unrelated
+            Allow: /people*
+
+            user-agent: Agent
+            Disallow: /people""")
+
+        self.assertTrue (a.can_crawl("https://ics.uci.edu/"))
+        self.assertTrue (a.can_crawl("https://ics.uci.edu/people/about"))
+        self.assertTrue (a.can_crawl("https://ics.uci.edu/people/about/x"))
+        self.assertFalse(a.can_crawl("https://ics.uci.edu/people"))
+
     def test_sitemaps(self):
         a = Robots("ics.uci.edu", "MyAgent", """
             Sitemap: http://www.example.com/sitemap-host1.xml

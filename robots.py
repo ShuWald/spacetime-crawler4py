@@ -36,7 +36,7 @@ class Robots:
         applicable = False
         for line in robotstxt.splitlines():
             if line.strip() == "":
-                applicable = True
+                applicable = False
             elif r := Robots.re_sitemap.search(line):
                 sitemaps.append(r.group(1).strip())
             if r := Robots.re_useragent.search(line):
@@ -57,7 +57,9 @@ class Robots:
         """Accepts a fully-qualified URL, not a path. Asserts on url domain. TODO: Allow logging?"""
         parse = urlparse(url)
         # TODO: remove at deployment
-        assert parse.netloc ==  self._domain
+        # (a mismatch here indicates a bug elsewhere)
+        assert parse.netloc == self._domain
+
         path = parse.path
 
         allow_rule_size = ("allow", "", 0)
