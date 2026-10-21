@@ -13,6 +13,8 @@ class TestRobots(unittest.TestCase):
         self.assertTrue(Robots.agent_matches("MyAgent", pattern="*"))
         # special characters
         self.assertTrue(Robots.agent_matches("Mozilla/5.0 (compatible; ExampleBot/0.1; https://www.example.com/bot.html)", pattern="ExampleBot"))
+        # gaps
+        self.assertFalse(Robots.agent_matches("Moz illa/5.0 (compatible; ExampleBot/0.1; https://www.example.com/bot.html)", pattern="Mozilla"))
 
     def test_rules(self):
         a = Robots("ics.uci.edu", "MyAgent", """

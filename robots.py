@@ -14,24 +14,17 @@ class Robots:
     re_sitemap = re.compile(r"^\W*sitemap\W*:([^#]*)", flags=re.I)
 
     useragent_chars = set(string.ascii_letters + string.digits + "_")
-    path_reserved = set(":/?#[]@!$&'()*+,;=") # general and special delimiters, Section 2.2 RFC3986
-    path_unreserved = set(string.ascii_letters + string.digits + "-._~") # unreserved delimeters, Section 2.3 RFC3986
-    path_chars = path_reserved.union(path_unreserved)
 
     def __init__(self, domain, user_agent, robotstxt):
         self._domain = domain
-        self._user_agent = self._normalize_user_agent(user_agent)
+        self._user_agent = user_agent
         self._rules, self._sitemaps = self._parse_rules(robotstxt)
-
-    @classmethod
-    def _normalize_user_agent(cls, agent: str) -> str:
-        return "".join(c for c in agent if c in cls.useragent_chars).lower()
 
     @classmethod
     def agent_matches(cls, agent, pattern) -> bool:
         if pattern == "*":
             return True
-        return cls._normalize_user_agent(pattern) in agent.lower()
+        return pattern.lower() in agent.lower()
 
     @classmethod
     def _pattern_regex(cls, pattern: str) -> re.Pattern:
