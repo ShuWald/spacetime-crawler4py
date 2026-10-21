@@ -42,9 +42,11 @@ class Robots:
         sitemaps: list[str] = []
         applicable = False
         for line in robotstxt.splitlines():
+            if line.strip() == "":
+                applicable = True
             if r := Robots.re_useragent.search(line):
                 agent = r.group(1)
-                applicable = Robots.agent_matches(self._user_agent, r.group(1).strip())
+                applicable = applicable or Robots.agent_matches(self._user_agent, r.group(1).strip())
                 continue
             if applicable:
                 if r := Robots.re_allow.search(line):

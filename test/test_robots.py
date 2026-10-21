@@ -31,5 +31,28 @@ class TestRobots(unittest.TestCase):
         self.assertFalse(a.can_crawl("https://ics.uci.edu/home/page/help/end"))
         self.assertTrue (a.can_crawl("https://ics.uci.edu/home/page/help/end/pastend"))
 
+    def test_two_agent_block(self):
+        a = Robots("ics.uci.edu", "MyAgent", """
+            User-Agent: MyAgent
+            User-Agent: OtherAgent
+            Allow: /people
+            Disallow: /home
+            """)
+        self.assertTrue (a.can_crawl("https://ics.uci.edu/people"))
+        self.assertTrue (a.can_crawl("https://ics.uci.edu/people/page"))
+        self.assertFalse(a.can_crawl("https://ics.uci.edu/home"))
+        self.assertFalse(a.can_crawl("https://ics.uci.edu/home/page"))
+
+        a = Robots("ics.uci.edu", "MyAgent", """
+            User-Agent: OtherAgent
+            User-Agent: MyAgent
+            Allow: /people
+            Disallow: /home
+            """)
+        self.assertTrue (a.can_crawl("https://ics.uci.edu/people"))
+        self.assertTrue (a.can_crawl("https://ics.uci.edu/people/page"))
+        self.assertFalse(a.can_crawl("https://ics.uci.edu/home"))
+        self.assertFalse(a.can_crawl("https://ics.uci.edu/home/page"))
+
 if __name__ == "__main__":
     unittest.main()
