@@ -7,6 +7,8 @@ from queue import Queue, Empty
 from utils import get_logger, get_urlhash, normalize
 from scraper import is_valid
 
+from urllib.parse import urlparse 
+
 class Frontier(object):
     def __init__(self, config, restart):
         self.logger = get_logger("FRONTIER")
@@ -55,6 +57,9 @@ class Frontier(object):
 
     def add_url(self, url):
         url = normalize(url)
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return
         urlhash = get_urlhash(url)
         if urlhash not in self.save:
             self.save[urlhash] = (url, False)
@@ -62,6 +67,7 @@ class Frontier(object):
             self.to_be_downloaded.append(url)
     
     def mark_url_complete(self, url):
+        url = normalize(url)
         urlhash = get_urlhash(url)
         if urlhash not in self.save:
             # This should not happen.
