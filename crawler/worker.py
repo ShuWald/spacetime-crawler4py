@@ -57,7 +57,7 @@ class Worker(Thread):
 
     def _update_cache(self, tbd_url, parse_url):
         '''updates robots_cache'''
-        robots_url = urlunparse((parse_url.scheme, parse_url.netloc, "", "", "", ""))
+        robots_url = urlunparse((parse_url.scheme, parse_url.netloc, "robots.txt", "", "", ""))
 
         robots_response = download(robots_url, self.config, self.logger)
 
