@@ -1,0 +1,91 @@
+import unittest
+
+from robots import Robots
+
+class TestRobots(unittest.TestCase):
+    def test_matching(self):
+        # substring match
+        self.assertTrue(Robots.agent_matches("MyAgent", pattern="MyAgent"))
+        self.assertTrue(Robots.agent_matches("MyAgent", pattern="Agen"))
+        # substring non match
+        self.assertFalse(Robots.agent_matches("MyAgent", pattern="OtherAgent"))
+        # star
+        self.assertTrue(Robots.agent_matches("MyAgent", pattern="*"))
+        # special characters
+        self.assertTrue(Robots.agent_matches("Mozilla/5.0 (compatible; ExampleBot/0.1; https://www.example.com/bot.html)", pattern="ExampleBot"))
+        # gaps
+        self.assertFalse(Robots.agent_matches("Moz illa/5.0 (compatible; ExampleBot/0.1; https://www.example.com/bot.html)", pattern="Mozilla"))
+
+    def test_rules(self):
+        a = Robots("ics.uci.edu", "MyAgent", """
+            User-Agent: MyAgent
+            Allow: /people
+            Disallow: /home #
+            Allow: /home/*help
+            Disallow: /home/*help/end$
+            """)
+        self.assertTrue (a.can_crawl("https://ics.uci.edu/people"))
+        self.assertTrue (a.can_crawl("https://ics.uci.edu/people/page"))
+        self.assertFalse(a.can_crawl("https://ics.uci.edu/home"))
+        self.assertFalse(a.can_crawl("https://ics.uci.edu/home/page"))
+        self.assertTrue (a.can_crawl("https://ics.uci.edu/home/page/help"))
+        self.assertTrue (a.can_crawl("https://ics.uci.edu/home/page/help/subhelp"))
+        self.assertFalse(a.can_crawl("https://ics.uci.edu/home/page/help/end"))
+        self.assertTrue (a.can_crawl("https://ics.uci.edu/home/page/help/end/pastend"))
+
+    def test_two_agent_block(self):
+        a = Robots("ics.uci.edu", "MyAgent", """
+            User-Agent: MyAgent
+            User-Agent: OtherAgent
+            Allow: /people
+            Disallow: /home
+            """)
+        self.assertTrue (a.can_crawl("https://ics.uci.edu/people"))
+        self.assertTrue (a.can_crawl("https://ics.uci.edu/people/page"))
+        self.assertFalse(a.can_crawl("https://ics.uci.edu/home"))
+        self.assertFalse(a.can_crawl("https://ics.uci.edu/home/page"))
+
+        a = Robots("ics.uci.edu", "MyAgent", """
+            User-Agent: OtherAgent
+            User-Agent: MyAgent
+            Allow: /people
+            Disallow: /home
+            """)
+        self.assertTrue (a.can_crawl("https://ics.uci.edu/people"))
+        self.assertTrue (a.can_crawl("https://ics.uci.edu/people/page"))
+        self.assertFalse(a.can_crawl("https://ics.uci.edu/home"))
+        self.assertFalse(a.can_crawl("https://ics.uci.edu/home/page"))
+
+    def test_union_blocks(self):
+        a = Robots("ics.uci.edu", "MyAgent", """
+            User-agent: MyAgent
+            Allow: /people/about
+
+            user-agent: unrelated
+            Allow: /people*
+
+            user-agent: Agent
+            Disallow: /people""")
+
+        self.assertTrue (a.can_crawl("https://ics.uci.edu/"))
+        self.assertTrue (a.can_crawl("https://ics.uci.edu/people/about"))
+        self.assertTrue (a.can_crawl("https://ics.uci.edu/people/about/x"))
+        self.assertFalse(a.can_crawl("https://ics.uci.edu/people"))
+
+    def test_sitemaps(self):
+        a = Robots("ics.uci.edu", "MyAgent", """
+            Sitemap: http://www.example.com/sitemap-host1.xml
+
+            User-Agent: OtherAgent
+            User-Agent: MyAgent
+            Allow: /people
+            Sitemap: http://www.example.com/sitemap-host2.xml
+            Disallow: /home
+
+            Sitemap: http://www.example.com/sitemap-host3.xml
+            """)
+        self.assertEqual(a.get_sitemaps(), ["http://www.example.com/sitemap-host1.xml", "http://www.example.com/sitemap-host2.xml", "http://www.example.com/sitemap-host3.xml"])
+
+
+if __name__ == "__main__":
+    unittest.main()
