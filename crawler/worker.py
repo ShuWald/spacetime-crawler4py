@@ -33,6 +33,7 @@ class Worker(Thread):
                 break
 
             parse_url = urlparse(tbd_url)
+
             domain = parse_url.netloc
             if self.robots_cache.get(domain) == None: # never before seen domain, add Robot to cache
                 self._update_cache(tbd_url, parse_url)
@@ -46,11 +47,17 @@ class Worker(Thread):
                 self.logger.info(
                     f"Downloaded {tbd_url}, status <{resp.status}>, "
                     f"using cache {self.config.cache_server}.")
-                scraped_urls = scraper.scraper(tbd_url, resp)
+
+                scraped = scraper.scraper(tbd_url, resp)
+                scraped_urls = scraped["urls"]
+
                 for scraped_url in scraped_urls:
                     self.frontier.add_url(scraped_url)
+
                 self.frontier.mark_url_complete(tbd_url)
-                time.sleep(self.config.time_delay) # remove soon
+
+                # TODO: replace with proper politeness delays via frontier
+                time.sleep(self.config.time_delay) 
 
                 
 
@@ -64,6 +71,9 @@ class Worker(Thread):
         robots_txt = robots_response.raw_response.text if robots_response.raw_response is not None else "" # access the text of the robots file loaded via the pickle in response
 
         Worker.robots_cache[parse_url.netloc] = Robots(parse_url.netloc, self.config.user_agent, robots_txt)
+
+
+        self.logger.info(f"Cached Robots.txt for {parse_url.netloc}")
 
         time.sleep(self.config.time_delay) # delete if no need for downtime after acessing a robots.txt
 
