@@ -40,7 +40,7 @@ class Worker(Thread):
             if self.robots_cache[domain].can_crawl(tbd_url): # check if we can crawl
                 # if domain timestamp is not far enough in past:
                 # wait
-                resp = download(tbd_url, self.config.USERAGENT, self.logger)
+                resp = download(tbd_url, self.config, self.logger)
                 # have frontier update its list of visited URLs
                 # add recent timestamp to timestamp_cache in frontier
                 self.logger.info(
@@ -59,7 +59,9 @@ class Worker(Thread):
         '''updates robots_cache'''
         robots_url = urlunparse((parse_url.scheme, parse_url.netloc, "", "", "", ""))
 
-        robots_txt = download(robots_url, self.config, self.logger)
+        robots_response = download(robots_url, self.config, self.logger)
+
+        robots_txt = robots_response.raw_response.text if robots_response.raw_response is not None else "" # access the text of the robots file loaded via the pickle in response
 
         Worker.robots_cache[parse_url.netloc] = Robots(parse_url.netloc, self.config, robots_txt)
 
