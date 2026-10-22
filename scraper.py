@@ -4,6 +4,12 @@ from urllib.parse import urljoin, urlparse
 import bs4
 from utils import normalize
 
+ALLOWED_DOMAINS = (
+    "ics.uci.edu",
+    "cs.uci.edu",
+    "informatics.uci.edu",
+    "stat.uci.edu",
+)
 
 # url: the URL that was used to get the page
 # resp.url: the actual url of the page
@@ -51,11 +57,11 @@ def extract_next_links(resp):
             links.append(final_href)
     return links
 
-    # One-liner cuz why not
-    #links = [normalize(urljoin(resp.url, a.get("href"))) for a in parser.find_all("a", href=True) if is_valid(normalize(urljoin(resp.url, a.get("href"))))]
-
 
 def is_valid(url):
+    if not isinstance(url, str):
+        return False
+
     # Decide whether to crawl this url or not. 
     # If you decide to crawl it, return True; otherwise return False.
     # There are already some conditions that return False.
@@ -63,6 +69,15 @@ def is_valid(url):
         parsed = urlparse(url)
         if parsed.scheme not in set(["http", "https"]):
             return False
+        # TODO: remove before launch
+        assert parsed.hostname is not None
+        hostname = parsed.hostname.lower()
+        if not any(
+            hostname == domain or hostname.endswith("." + domain)
+            for domain in ALLOWED_DOMAINS
+        ):
+            return False
+
         return not re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
             + r"|png|tiff?|mid|mp2|mp3|mp4"
