@@ -63,7 +63,7 @@ class Worker(Thread):
 
         robots_txt = robots_response.raw_response.text if robots_response.raw_response is not None else "" # access the text of the robots file loaded via the pickle in response
 
-        Worker.robots_cache[parse_url.netloc] = Robots(parse_url.netloc, self.config, robots_txt)
+        Worker.robots_cache[parse_url.netloc] = Robots(parse_url.netloc, self.config.user_agent, robots_txt)
 
         time.sleep(self.config.time_delay) # delete if no need for downtime after acessing a robots.txt
 
