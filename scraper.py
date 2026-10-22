@@ -1,21 +1,59 @@
+from os import stat
 import re
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
+import bs4
+from utils import normalize
+
+
+# url: the URL that was used to get the page
+# resp.url: the actual url of the page
+# resp.status: the status code returned by the server. 200 is OK, you got the page. Other numbers mean that there was some kind of problem.
+# resp.error: when status is not 200, you can check the error here, if needed.
+# resp.raw_response: this is where the page actually is. More specifically, the raw_response has two parts:
+#         resp.raw_response.url: the url, again
+#         resp.raw_response.content: the content of the page!
+
 
 def scraper(url, resp):
-    links = extract_next_links(url, resp)
-    return [link for link in links if is_valid(link)]
+    scraped_result = {"urls": []}
+    status = resp.status
+    # If there was an alias, mark the destination URL to avoid revisiting
+    if url != resp.url:
+        scraped_result["destination"] = [resp.url]
+        # However ideally the frontier should already know the original URL(alias)
+        scraped_result["alias"] = [url]
+    # Preventing redirect to unauthorized or invalid URLs
+    if not is_valid(resp.url):
+        # Should mark the alias URL and terminate
+        scraped_result["alias"] = [url]
+        scraped_result["error"] = "Unauthorized redirect"
+        return scraped_result
+    if status != 200:
+        # Logic for returning error type based on status code, allowing possible retries, or alternative handling
+        error = resp.error
+        scraped_result["status"] = status
+        scraped_result["error"] = error
+    
+    # Relies on extract_next_links to validate, normalize, return absolute links
+    links = extract_next_links(resp)
+    scraped_result["urls"] = links
+    return scraped_result
 
-def extract_next_links(url, resp):
-    # Implementation required.
-    # url: the URL that was used to get the page
-    # resp.url: the actual url of the page
-    # resp.status: the status code returned by the server. 200 is OK, you got the page. Other numbers mean that there was some kind of problem.
-    # resp.error: when status is not 200, you can check the error here, if needed.
-    # resp.raw_response: this is where the page actually is. More specifically, the raw_response has two parts:
-    #         resp.raw_response.url: the url, again
-    #         resp.raw_response.content: the content of the page!
-    # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
-    return list()
+# Offloaded the redirect/unauthorized URL handling to the main scraper function, so link should be valid
+def extract_next_links(resp):
+    parser = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
+    links = []
+    for a in parser.find_all("a", href = True):
+        raw_href = a.get("href")
+        absolute_href = urljoin(resp.url, raw_href)
+        final_href = normalize(absolute_href)
+        if is_valid(final_href):
+            links.append(final_href)
+    return links
+
+    # One-liner cuz why not
+    #links = [normalize(urljoin(resp.url, a.get("href"))) for a in parser.find_all("a", href=True) if is_valid(normalize(urljoin(resp.url, a.get("href"))))]
+
 
 def is_valid(url):
     # Decide whether to crawl this url or not. 
