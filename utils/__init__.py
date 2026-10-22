@@ -39,6 +39,10 @@ def get_urlhash(url):
 
 # Normalize a URL, lowercases the scheme and netloc, ensures a path, and optionally keeps fragments
 def normalize(url, keepFragments=True):
+    if not isinstance(url, str):
+        print(f"URL is not string: {url}")
+        return ""
+    
     parts = urlsplit(url)
     scheme = parts.scheme.lower()
     netloc = parts.netloc.lower()

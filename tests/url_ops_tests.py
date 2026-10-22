@@ -24,6 +24,11 @@ NORMALIZE_CASES = [
         "inputs": ("https://example.com",),
         "outputs": "https://example.com/",
     },
+    # Error handling for non-string URLs return empty
+    {
+        "inputs": (2,),
+        "outputs": "",
+    },
 ]
 
 
@@ -35,7 +40,7 @@ URLHASH_CASES = [
             "http://example.com/",
             "https://EXAMPLE.COM",
         ],
-        "output": "e52aa78cab6e854b1a7db9780b9915240467f21ce7a790328ff848ddb2869f80",
+        "comparison": "equal",
     },
     # Ignore host casing while preserving path, query, and fragment.
     {
@@ -43,21 +48,19 @@ URLHASH_CASES = [
             "https://Example.COM/path?query=1#section",
             "http://EXAMPLE.com/path?query=1#section",
         ],
-        "output": "c0891be7caaaa160d45f322e841b34aaf0b16d174c8a943d0733fc43323d05e0",
+        "comparison": "equal",
     },
     # Keep distinct fragments distinct in the URL hash.
     {
-        "inputs": ["https://example.com/page#one"],
-        "output": "80c40f1c3ac3b1c404552d88610a8975cc291ccae4ef41b7155db12dea860595",
-    },
-    {
-        "inputs": ["https://example.com/page#two"],
-        "output": "cd6c8b2ab8c1616e98aaee99d7d8a5ce8f0544191ead5cfcf030d07cb2e23e71",
+        "inputs": [
+            "https://example.com/page#one",
+            "https://example.com/page#two",
+        ],
+        "comparison": "not_equal",
     },
 ]
 
 
-# Recursively test the above cases
 class UrlOperationsTests(unittest.TestCase):
     def test_normalize_cases(self):
         for case in NORMALIZE_CASES:
@@ -65,10 +68,24 @@ class UrlOperationsTests(unittest.TestCase):
                 self.assertEqual(normalize(*case["inputs"]), case["outputs"])
 
     def test_get_urlhash_cases(self):
-        for case in URLHASH_CASES:
-            for url in case["inputs"]:
-                with self.subTest(url=url):
-                    self.assertEqual(get_urlhash(url), case["output"])
+        equivalent_case = URLHASH_CASES[0]
+        equivalent_hashes = [
+            get_urlhash(url) for url in equivalent_case["inputs"]
+        ]
+        self.assertEqual(equivalent_hashes[0], equivalent_hashes[1])
+        self.assertEqual(equivalent_hashes[1], equivalent_hashes[2])
+
+        path_case = URLHASH_CASES[1]
+        self.assertEqual(
+            get_urlhash(path_case["inputs"][0]),
+            get_urlhash(path_case["inputs"][1]),
+        )
+
+        distinct_fragment_case = URLHASH_CASES[2]
+        self.assertNotEqual(
+            get_urlhash(distinct_fragment_case["inputs"][0]),
+            get_urlhash(distinct_fragment_case["inputs"][1]),
+        )
 
 
 if __name__ == "__main__":

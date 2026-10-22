@@ -15,28 +15,29 @@ from utils import normalize
 
 
 def scraper(url, resp):
-    # We can also always just push the status/error/redirect handling up higher
+    scraped_result = {"urls": []}
     status = resp.status
-    alias_url = url if url != resp.url else None
+    # If there was an alias, mark the destination URL to avoid revisiting
+    if url != resp.url:
+        scraped_result["destination"] = [resp.url]
+        # However ideally the frontier should already know the original URL(alias)
+        scraped_result["alias"] = [url]
     # Preventing redirect to unauthorized or invalid URLs
     if not is_valid(resp.url):
         # Should mark the alias URL and terminate
-        # For now just returns the alias URL into list
-        return [alias_url]
+        scraped_result["alias"] = [url]
+        scraped_result["error"] = "Unauthorized redirect"
+        return scraped_result
     if status != 200:
         # Logic for returning error type based on status code, allowing possible retries, or alternative handling
-        # For now just return the status and error into list
         error = resp.error
-        return list((status, error))
+        scraped_result["status"] = status
+        scraped_result["error"] = error
+    
     # Relies on extract_next_links to validate, normalize, return absolute links
     links = extract_next_links(resp)
-    # If there was an alias, mark the destination URL to avoid revisiting
-    # Since ideally the frontier should already know the original URL(alias)
-    # For now just append to links list
-    if alias_url:
-        links.append(resp.url)
-    return links
-
+    scraped_result["urls"] = links
+    return scraped_result
 
 # Offloaded the redirect/unauthorized URL handling to the main scraper function, so link should be valid
 def extract_next_links(resp):
