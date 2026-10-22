@@ -5,13 +5,12 @@ import bs4
 from utils import normalize
 
 
-# url: the URL that was used to get the page
-# resp.url: the actual url of the page
-# resp.status: the status code returned by the server. 200 is OK, you got the page. Other numbers mean that there was some kind of problem.
-# resp.error: when status is not 200, you can check the error here, if needed.
-# resp.raw_response: this is where the page actually is. More specifically, the raw_response has two parts:
-#         resp.raw_response.url: the url, again
-#         resp.raw_response.content: the content of the page!
+ALLOWED_DOMAINS = (
+    "ics.uci.edu",
+    "cs.uci.edu",
+    "informatics.uci.edu",
+    "stat.uci.edu",
+)
 
 
 def scraper(url, resp):
@@ -23,6 +22,7 @@ def scraper(url, resp):
         # However ideally the frontier should already know the original URL(alias)
         scraped_result["alias"] = [url]
     # Preventing redirect to unauthorized or invalid URLs
+    # Since worker handles robots.txt we we can always push this logic up
     if not is_valid(resp.url):
         # Should mark the alias URL and terminate
         scraped_result["alias"] = [url]
@@ -34,7 +34,7 @@ def scraper(url, resp):
         scraped_result["status"] = status
         scraped_result["error"] = error
     
-    # Relies on extract_next_links to validate, normalize, return absolute links
+    # At this point links may still contain unauthorized/invalid entries
     links = extract_next_links(resp)
     scraped_result["urls"] = links
     return scraped_result
@@ -51,17 +51,22 @@ def extract_next_links(resp):
             links.append(final_href)
     return links
 
-    # One-liner cuz why not
-    #links = [normalize(urljoin(resp.url, a.get("href"))) for a in parser.find_all("a", href=True) if is_valid(normalize(urljoin(resp.url, a.get("href"))))]
 
 
+# Decide whether to crawl this url or not
 def is_valid(url):
-    # Decide whether to crawl this url or not. 
-    # If you decide to crawl it, return True; otherwise return False.
-    # There are already some conditions that return False.
+    if not isinstance(url, str):
+        return False
+
     try:
         parsed = urlparse(url)
-        if parsed.scheme not in set(["http", "https"]):
+        if parsed.scheme not in ("http", "https") or parsed.hostname is None:
+            return False
+        hostname = parsed.hostname.lower()
+        if not any(
+            hostname == domain or hostname.endswith("." + domain)
+            for domain in ALLOWED_DOMAINS
+        ):
             return False
         return not re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
@@ -73,6 +78,5 @@ def is_valid(url):
             + r"|thmx|mso|arff|rtf|jar|csv"
             + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower())
 
-    except TypeError:
-        print ("TypeError for ", parsed)
-        raise
+    except ValueError:
+        return False

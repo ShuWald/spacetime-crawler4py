@@ -1,5 +1,6 @@
 import unittest
 
+from scraper import is_valid
 from utils import get_urlhash, normalize
 
 
@@ -62,6 +63,31 @@ URLHASH_CASES = [
 
 
 class UrlOperationsTests(unittest.TestCase):
+    def test_is_valid_cases(self):
+        valid_urls = [
+            "https://ics.uci.edu/",
+            "http://www.cs.uci.edu/page",
+            "https://research.informatics.uci.edu/results", # Test subdomain
+            "https://stat.uci.edu/data",
+        ]
+        invalid_urls = [
+            "https://uci.edu/",
+            "https://notics.uci.edu/",
+            "https://ics.uci.edu.evil.example/",
+            "ftp://ics.uci.edu/file",
+            "relative-page",
+            None,
+            2,
+        ]
+
+        for url in valid_urls:
+            with self.subTest(url=url):
+                self.assertTrue(is_valid(url))
+
+        for url in invalid_urls:
+            with self.subTest(url=url):
+                self.assertFalse(is_valid(url))
+
     def test_normalize_cases(self):
         for case in NORMALIZE_CASES:
             with self.subTest(inputs=case["inputs"]):

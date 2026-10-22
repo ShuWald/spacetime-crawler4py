@@ -8,22 +8,22 @@ SCRAPER_LOGIC_CASES = {
     # Reject an invalid redirect destination and return the requested URL as its alias.
     "test_invalid_redirect": {
         "inputs": (
-            "https://www.example.com/original",
+            "https://www.ics.uci.edu/original",
             MockResponse("ftp://invalid.example.com", 200),
         ),
         "outputs": {
             "urls": [],
             "destination": ["ftp://invalid.example.com"],
-            "alias": ["https://www.example.com/original"],
+            "alias": ["https://www.ics.uci.edu/original"],
             "error": "Unauthorized redirect",
         },
     },
     # (Currently) Directly return the response status and error for retry or error handling upstream.
     "test_non_success_response": {
         "inputs": (
-            "https://www.example.com",
+            "https://www.ics.uci.edu",
             MockResponse(
-                "https://www.example.com",
+                "https://www.ics.uci.edu",
                 503,
                 error="service unavailable",
                 raw_response=MockRawResponse(
@@ -33,7 +33,7 @@ SCRAPER_LOGIC_CASES = {
             ),
         ),
         "outputs": {
-            "urls": ["https://www.example.com/retry"],
+            "urls": ["https://www.ics.uci.edu/retry"],
             "status": 503,
             "error": "service unavailable",
         },
@@ -41,9 +41,9 @@ SCRAPER_LOGIC_CASES = {
     # Return normalized, valid links from a successful response.
     "test_successful_response_returns_extracted_links": {
         "inputs": (
-            "https://www.example.com",
+            "https://www.ics.uci.edu",
             MockResponse(
-                "https://www.example.com",
+                "https://www.ics.uci.edu",
                 200,
                 raw_response=MockRawResponse(
                     b'<a href="/first">first</a>'
@@ -54,17 +54,17 @@ SCRAPER_LOGIC_CASES = {
         ),
         "outputs": {
             "urls": [
-                "https://www.example.com/first",
-                "https://www.example.com/second",
+                "https://www.ics.uci.edu/first",
+                "https://www.ics.uci.edu/second",
             ],
         },
     },
     # (Currently) Append a redirected destination so it can be tracked as an alias.
     "test_successful_redirect": {
         "inputs": (
-            "https://www.example.com/original",
+            "https://www.ics.uci.edu/original",
             MockResponse(
-                "https://www.example.com/destination",
+                "https://www.ics.uci.edu/destination",
                 200,
                 raw_response=MockRawResponse(
                     b'<a href="/next">next</a>'
@@ -73,9 +73,9 @@ SCRAPER_LOGIC_CASES = {
             ),
         ),
         "outputs": {
-            "urls": ["https://www.example.com/next"],
-            "destination": ["https://www.example.com/destination"],
-            "alias": ["https://www.example.com/original"],
+            "urls": ["https://www.ics.uci.edu/next"],
+            "destination": ["https://www.ics.uci.edu/destination"],
+            "alias": ["https://www.ics.uci.edu/original"],
         },
     },
 }

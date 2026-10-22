@@ -8,10 +8,11 @@ from utils import get_logger, get_urlhash, normalize
 from scraper import is_valid
 
 class Frontier(object):
-    def __init__(self, config, restart):
+    def __init__(self, config, restart, verbose=False):
         self.logger = get_logger("FRONTIER")
         self.config = config
         self.to_be_downloaded = list()
+        self.verbose = verbose
         
         if not os.path.exists(self.config.save_file) and not restart:
             # Save file does not exist, but request to load save.
@@ -23,6 +24,10 @@ class Frontier(object):
             self.logger.info(
                 f"Found save file {self.config.save_file}, deleting it.")
             os.remove(self.config.save_file)
+
+
+        ## Imo should separate into visited and frontier/save files
+    
         # Load existing save file, or create one if it does not exist.
         self.save = shelve.open(self.config.save_file)
         if restart:
@@ -49,18 +54,32 @@ class Frontier(object):
 
     def get_tbd_url(self):
         try:
-            return self.to_be_downloaded.pop()
+            next_url = self.to_be_downloaded.pop()
+            if self.verbose:
+                self.logger.info(f"Frontier assigning URL: {next_url}")
+            return next_url
         except IndexError:
+            if self.verbose:
+                self.logger.info("Frontier has no URLs to assign currently.")
+            # requires some kind of code to check if any workers are processing URLs in in_progress
             return None
 
+    # URLs are saved to self.save the moment they are seen
+    # This would include invalid/unauthorized URLs since our robots logic is only applied before a crawler crawls the unauthorized site
     def add_url(self, url):
         url = normalize(url)
+        # Checks visited
         urlhash = get_urlhash(url)
         if urlhash not in self.save:
             self.save[urlhash] = (url, False)
             self.save.sync()
             self.to_be_downloaded.append(url)
-    
+            if self.verbose:
+                self.logger.info(f"Added URL to frontier: {url}")
+                self.logger.info(f"Frontier size: {len(self.to_be_downloaded)}")
+
+    # So the instructor code indicates that urls are hashed the moment they are seen
+    # Thus the saved URLs function as a "seen" set rather than a "visited" set
     def mark_url_complete(self, url):
         urlhash = get_urlhash(url)
         if urlhash not in self.save:
