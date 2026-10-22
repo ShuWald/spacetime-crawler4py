@@ -32,32 +32,36 @@ class Worker(Thread):
                 self.logger.info("Frontier is empty. Stopping Crawler.")
                 break
 
-            parse_url = urlparse(tbd_url)
+            try: # in the event that the URL causes an error so catastrophic none of the other modules can handle it, skip the url
+                parse_url = urlparse(tbd_url)
 
-            domain = parse_url.netloc
-            if self.robots_cache.get(domain) == None: # never before seen domain, add Robot to cache
-                self._update_cache(tbd_url, parse_url)
+                domain = parse_url.netloc
+                if self.robots_cache.get(domain) == None: # never before seen domain, add Robot to cache
+                    self._update_cache(tbd_url, parse_url)
 
-            if self.robots_cache[domain].can_crawl(tbd_url): # check if we can crawl
-                # if domain timestamp is not far enough in past:
-                # wait
-                resp = download(tbd_url, self.config, self.logger)
-                # have frontier update its list of visited URLs
-                # add recent timestamp to timestamp_cache in frontier
-                self.logger.info(
-                    f"Downloaded {tbd_url}, status <{resp.status}>, "
-                    f"using cache {self.config.cache_server}.")
+                if self.robots_cache[domain].can_crawl(tbd_url): # check if we can crawl
+                    # if domain timestamp is not far enough in past:
+                    # wait
+                    resp = download(tbd_url, self.config, self.logger)
+                    # have frontier update its list of visited URLs
+                    # add recent timestamp to timestamp_cache in frontier
+                    self.logger.info(
+                        f"Downloaded {tbd_url}, status <{resp.status}>, "
+                        f"using cache {self.config.cache_server}.")
 
-                scraped = scraper.scraper(tbd_url, resp)
-                scraped_urls = scraped["urls"]
+                    scraped = scraper.scraper(tbd_url, resp)
+                    scraped_urls = scraped["urls"]
 
-                for scraped_url in scraped_urls:
-                    self.frontier.add_url(scraped_url)
+                    for scraped_url in scraped_urls:
+                        self.frontier.add_url(scraped_url)
 
-                self.frontier.mark_url_complete(tbd_url)
+                    self.frontier.mark_url_complete(tbd_url)
 
-                # TODO: replace with proper politeness delays via frontier
-                time.sleep(self.config.time_delay) 
+                    # TODO: replace with proper politeness delays via frontier
+                    time.sleep(self.config.time_delay) 
+            except Exception as e:
+                pass 
+                # TODO: add bad URLs to lists in frontier once implemented
 
                 
 
