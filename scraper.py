@@ -41,7 +41,7 @@ def scraper(url, resp):
         scraped_result["error"] = error
     
     # Relies on extract_next_links to validate, normalize, return absolute links
-    if response != None: # dont even attempt to open up a file and extract data if we cant access it
+    if resp != None: # dont even attempt to open up a file and extract data if we cant access it
         links = extract_next_links(resp)
         scraped_result["urls"] = links
     return scraped_result
