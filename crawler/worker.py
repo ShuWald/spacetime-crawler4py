@@ -1,6 +1,6 @@
 from threading import Thread
 from inspect import getsource
-#from utils.download import download
+from utils.download import download
 from utils import get_logger
 from urllib.parse import urlparse
 from urllib.parse import urlunparse
