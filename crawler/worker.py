@@ -46,7 +46,7 @@ class Worker(Thread):
                 else: 
                     # Wait half the politeness delay to recheck frontier
                     time.sleep(self.config.time_delay/2)
-                break
+                    continue
 
             try: # in the event that the URL causes an error so catastrophic none of the other modules can handle it, skip the url
                 parse_url = urlparse(tbd_url)
