@@ -28,7 +28,7 @@ class Statistics:
 
         if config.stopwords:
             with open(config.stopwords) as f:
-                self._stopwords = set(f.readlines())
+                self._stopwords = { w.strip() for w in f.readlines() }
         # None if not saving
         self._stats_file = None if stats_file is "" else stats_file or config.stats_file
 
