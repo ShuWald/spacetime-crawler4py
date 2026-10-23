@@ -49,7 +49,7 @@ class Statistics:
         url_norm = self._normalize(url)
         self._urls.add(url_norm)
 
-    def union(self, other: Statistics) -> Statistics:
+    def union(self, other: 'Statistics') -> 'Statistics':
         s = Statistics()
         for w, c in self._word_counts.items():
             s._word_counts[w] = c
