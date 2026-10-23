@@ -15,7 +15,7 @@ class Frontier(object):
         self.logger = get_logger("FRONTIER")
         self.config = config
         self.to_be_downloaded = {} # stores domain : list[url]
-        self.in_use = {}           # stores a domain if in use
+        self.in_use = {}           # stores domain : list[url]
         self.timestamps = {}        # stores domain : date
         
         if not os.path.exists(self.config.save_file) and not restart:
@@ -78,19 +78,21 @@ class Frontier(object):
                     # do things
                     self.in_use[key] = self.to_be_downloaded[key] # store the key and list of urls
                     self.to_be_downloaded.pop(key, None)          # remove key value pair from dicctionary so we literally cant come across it, and slightly faster traversal
-                    return (self.in_use[key].pop(), 0.0)            # return frontmost url in domain url list
+                    return (self.in_use[key].pop(), self.timestamps[key], False)            # return frontmost url in domain url list
                     
 
-                else: # key domain shouldnt be accessed
+                elif not key_in_use: # key domain not in use but timed out
                     if (mintime == None) or self.timestamps[key] < mintime: # found older access or no time stored
                         mintime = self.timestamps[key]
                         minkey = key
+                else: # domain in use
+                    pass
             
             # if we get to this point, then we havent found valid domain within time (aka for all times in timestamps, now - timestamp <= 0.5), so wait and try again
-            minimum_downtime = 0.5 - (now - mintime)
             self.in_use[minkey] = self.to_be_downloaded[minkey]
             self.to_be_downloaded.pop(minkey, None)
-            return (self.in_use[minkey].pop(), minimum_downtime)
+            # if key at minkey cant be accessed, i.e to_be_downloaded is empty, will throw value error, in which case we return None
+            return (self.in_use[minkey].pop(), self.timestamps[minkey], True)
         
         except IndexError:
             return None
