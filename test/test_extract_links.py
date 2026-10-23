@@ -1,6 +1,6 @@
 import unittest
 
-from tests.mock import MockResponse, MockRawResponse
+from test.mock import MockResponse, MockRawResponse
 from scraper import extract_next_links
 
 
