@@ -1,3 +1,4 @@
+from crawler.statistics import Statistics
 import unittest
 
 from scraper import scraper
@@ -82,23 +83,26 @@ SCRAPER_LOGIC_CASES = {
 
 
 class ScraperLogicTests(unittest.TestCase):
+    def setUp(self):
+        self.statistics = Statistics()
+
     def test_invalid_redirect(self):
         case = SCRAPER_LOGIC_CASES["test_invalid_redirect"]
-        self.assertEqual(scraper(*case["inputs"]), case["outputs"])
+        self.assertEqual(scraper(*case["inputs"], self.statistics), case["outputs"])
 
     def test_non_success_response(self):
         case = SCRAPER_LOGIC_CASES["test_non_success_response"]
-        self.assertEqual(scraper(*case["inputs"]), case["outputs"])
+        self.assertEqual(scraper(*case["inputs"], self.statistics), case["outputs"])
 
     def test_successful_response_returns_extracted_links(self):
         case = SCRAPER_LOGIC_CASES[
             "test_successful_response_returns_extracted_links"
         ]
-        self.assertEqual(scraper(*case["inputs"]), case["outputs"])
+        self.assertEqual(scraper(*case["inputs"], self.statistics), case["outputs"])
 
     def test_successful_redirect(self):
         case = SCRAPER_LOGIC_CASES["test_successful_redirect"]
-        self.assertEqual(scraper(*case["inputs"]), case["outputs"])
+        self.assertEqual(scraper(*case["inputs"], self.statistics), case["outputs"])
 
 
 if __name__ == "__main__":

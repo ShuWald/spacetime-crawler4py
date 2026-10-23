@@ -1,3 +1,4 @@
+from crawler.statistics import Statistics
 from threading import Thread
 from inspect import getsource
 from utils.download import download
@@ -16,15 +17,16 @@ class Worker(Thread):
     # Robot(domain, user_agent, loaded robot file)
     timestamp_cache = {} # stores a dictionary of domains -> timestamp for last domain access
 
-    def __init__(self, worker_id, config, frontier):
+    def __init__(self, worker_id, config, frontier, statistics):
         self.logger = get_logger(f"Worker-{worker_id}", "Worker")
         self.config = config
         self.frontier = frontier
+        self.statistics = statistics
         # basic check for requests in scraper
         assert {getsource(scraper).find(req) for req in {"from requests import", "import requests"}} == {-1}, "Do not use requests in scraper.py"
         assert {getsource(scraper).find(req) for req in {"from urllib.request import", "import urllib.request"}} == {-1}, "Do not use urllib.request in scraper.py"
         super().__init__(daemon=True)
-        
+
     def run(self):
         while True:
             tbd_url = self.frontier.get_tbd_url() # string!
@@ -76,17 +78,17 @@ class Worker(Thread):
                     scraped_result["error"] = "Dead"
                 # If there are no errors can scrape page
                 if not scraped_result.get("error"): 
-                    scraped_urls = scraper.scraper(tbd_url, resp)
+                    scraped_urls = scraper.scraper(tbd_url, resp, self.statistics)
                     for scraped_url in scraped_urls:
                         self.frontier.add_url(scraped_url)
-
-                #TODO: Return scraped_result to frontier
-                self.frontier.mark_url_complete(tbd_url)
+                    self.frontier.mark_url_complete(tbd_url)
+                # TODO: mark incomplete otherwise
+                # key "urls" being missing currently indicates failure to load
 
                 # TODO: replace with proper politeness delays via frontier
-                time.sleep(self.config.time_delay) 
+                time.sleep(self.config.time_delay)
 
-                
+
 
 
     def _update_cache(self, tbd_url, parse_url):
@@ -107,4 +109,3 @@ class Worker(Thread):
     def _timestamp(self, domain):
         '''given a domain, add it into the timestamp_cache with the current timestamp'''
         pass
-    
