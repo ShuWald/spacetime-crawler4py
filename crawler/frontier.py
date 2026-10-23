@@ -50,12 +50,12 @@ class Frontier(object):
             if not completed and is_valid(url):
                 domain = urlparse(url).netloc;
 
-                if split_url.netloc in self.to_be_downloaded: # saved one before
+                if domain in self.to_be_downloaded: # saved one before
                     self.to_be_downloaded[domain].append(url)
                 else: # fresh domain
                     self.to_be_downloaded[domain] = [url]
 
-                timestamps[domain] = None
+                self.timestamps[domain] = None
 
                 tbd_count += 1
 
@@ -69,27 +69,32 @@ class Frontier(object):
         try:
             # check datetime, return first instance with long enough or first instance of a None stored time
             mintime = None
+            minkey = None
             now = time.time()
             for key in list(self.timestamps):
                 key_in_use = key in self.in_use
 
                 if (key == None or (now - self.timestamps[key] >= 0.5)) and not key_in_use: # i.e valid key found
                     # do things
-                    self.in_use[key] = to_be_downloaded[key] # store the key and list of urls
-                    to_be_downloaded.pop(key, None)          # remove key value pair from dicctionary so we literally cant come across it, and slightly faster traversal
-                    return self.in_use[key].pop()            # return frontmost url in domain url list
-                    break
+                    self.in_use[key] = self.to_be_downloaded[key] # store the key and list of urls
+                    self.to_be_downloaded.pop(key, None)          # remove key value pair from dicctionary so we literally cant come across it, and slightly faster traversal
+                    return (self.in_use[key].pop(), 0.0)            # return frontmost url in domain url list
+                    
 
                 else: # key domain shouldnt be accessed
                     if (mintime == None) or self.timestamps[key] < mintime: # found older access or no time stored
                         mintime = self.timestamps[key]
+                        minkey = key
             
             # if we get to this point, then we havent found valid domain within time (aka for all times in timestamps, now - timestamp <= 0.5), so wait and try again
-            time.sleep(0.5 - (now - mintime))
-            return get_tbd_url(self)
+            minimum_downtime = 0.5 - (now - mintime)
+            self.in_use[minkey] = self.to_be_downloaded[minkey]
+            self.to_be_downloaded.pop(minkey, None)
+            return (self.in_use[minkey].pop(), minimum_downtime)
+        
         except IndexError:
             return None
-        except Exception as e:
+        except Exception:
             return None
 
     def add_url(self, url):
@@ -113,6 +118,8 @@ class Frontier(object):
     
     def mark_url_complete(self, url):
         urlhash = get_urlhash(url)
+
+        domain = urlparse(url).netloc
 
         self.to_be_downloaded[domain] = self.in_use[domain] # add back into to_be_downloaded domain
         self.in_use.pop(domain, None)                          # remove from in_use
