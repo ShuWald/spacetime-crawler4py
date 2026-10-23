@@ -4,6 +4,9 @@ import urllib.parse
 import re
 import bs4
 from collections import defaultdict
+import pickle 
+import os
+
 class Statistics:
     re_word = re.compile("[a-zA-Z_0-9']+")
 
@@ -61,3 +64,34 @@ class Statistics:
             s._longest_page = other._longest_page
         s._urls = self._urls.union(other._urls)
         return s
+
+    # combine statistics and put into save file
+    # worker will call after a set amount of pages and after crawl
+    def save(self, file):
+        store_word_counts = dict(self._word_counts)
+
+        stats = {
+            "_urls": self._urls, 
+            "_word_counts": store_word_counts,
+            "_longest_page": self._longest_page,
+        }
+
+        f = open(file, "wb")
+        pickle.dump(stats, f)
+        f.close()
+
+    #  open save file if it exists to restore last checkpoint
+    def load(self, file): 
+        if not os.path.exists(file):
+            return
+        open_file = open(file, "rb")
+        stats = pickle.load(open_file)
+        open_file.close()
+
+        self._urls = stats["_urls"]
+        self._word_counts.update(stats["_word_counts"])
+        self._longest_page = stats["_longest_page"]
+
+
+
+

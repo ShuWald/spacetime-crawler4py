@@ -2,6 +2,7 @@ from crawler.statistics import Statistics
 from utils import get_logger
 from crawler.frontier import Frontier
 from crawler.worker import Worker
+import os
 
 class Crawler(object):
     def __init__(self, config, restart, frontier_factory=Frontier, worker_factory=Worker):
@@ -9,6 +10,13 @@ class Crawler(object):
         self.logger = get_logger("CRAWLER")
         self.frontier = frontier_factory(config, restart)
         self.statistics = Statistics() # TODO: shelve statistics? parallelize them?
+
+        if(restart):
+            if(os.path.exists("statistics.pkl")): 
+                os.remove("statistics.pkl")
+        else:
+            self.statistics.load("statistics.pkl")
+
         self.workers = list()
         self.worker_factory = worker_factory
 
