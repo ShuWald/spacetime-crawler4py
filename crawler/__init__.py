@@ -8,6 +8,7 @@ class Crawler(object):
     def __init__(self, config, restart, frontier_factory=Frontier, worker_factory=Worker):
         self.config = config
         self.logger = get_logger("CRAWLER")
+        self.logger.info("Cache server connected, starting crawler.")
         self.frontier = frontier_factory(config, restart)
         self.statistics = Statistics(config, restart, self.logger) # TODO: shelve statistics? parallelize them?
 
