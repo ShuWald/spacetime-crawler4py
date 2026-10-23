@@ -27,9 +27,8 @@ class Worker(Thread):
         super().__init__(daemon=True)
 
     def run(self):
-        processed_pages = 0 
         while True:
-            
+
             tbd_url = self.frontier.get_tbd_url() # string!
 
             if not tbd_url:
@@ -53,11 +52,6 @@ class Worker(Thread):
                     f"using cache {self.config.cache_server}.")
 
                 scraped = scraper.scraper(tbd_url, resp, self.statistics)
-                processed_pages += 1
-
-                if(processed_pages == 150):
-                    self.statistics.save("statistics.pkl")
-                    processed_pages = 0 
 
                 scraped_urls = scraped.get("urls")
                 if scraped_urls != None:
@@ -70,8 +64,7 @@ class Worker(Thread):
 
                 # TODO: replace with proper politeness delays via frontier
                 time.sleep(self.config.time_delay)
-        self.statistics.save("statistics.pkl")
-        
+
 
 
 

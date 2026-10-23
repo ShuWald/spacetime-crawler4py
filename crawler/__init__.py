@@ -9,13 +9,7 @@ class Crawler(object):
         self.config = config
         self.logger = get_logger("CRAWLER")
         self.frontier = frontier_factory(config, restart)
-        self.statistics = Statistics() # TODO: shelve statistics? parallelize them?
-
-        if(restart):
-            if(os.path.exists("statistics.pkl")): 
-                os.remove("statistics.pkl")
-        else:
-            self.statistics.load("statistics.pkl")
+        self.statistics = Statistics(config, restart, self.logger) # TODO: shelve statistics? parallelize them?
 
         self.workers = list()
         self.worker_factory = worker_factory
@@ -28,8 +22,30 @@ class Crawler(object):
             worker.start()
 
     def start(self):
-        self.start_async()
-        self.join()
+        try:
+            self.start_async()
+            self.join()
+        except Exception as e:
+            print(f"Crawler failed with exception {e}")
+        finally:
+            self.statistics.save()
+            # self.frontier.save()
+            self.printSummary()
+
+    def printSummary(self):
+        s = self.statistics.summary("ics.uci.edu")
+        print("----- Begin Crawl Report -----")
+        print(f"We found {s["unique_page_count"]} unique pages.")
+        page, size = s["longest_page"]
+        print(f"The longest page is {page} with {size} words.")
+        print("The top few words are:")
+        for w, c in s["top_k_words"]:
+            print(f"{w}, {c}")
+        subdomains = s["ics_subdomain_pagecounts"]
+        print(f"There are {len(subdomains)} ics.uci.edu subdomains:")
+        for d, c in subdomains:
+            print(f"{d}, {c}")
+        print("----- End Crawl Report -----")
 
     def join(self):
         for worker in self.workers:
