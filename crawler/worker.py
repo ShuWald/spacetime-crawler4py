@@ -16,11 +16,11 @@ class Worker(Thread):
     # Robot(domain, user_agent, loaded robot file)
     timestamp_cache = {} # stores a dictionary of domains -> timestamp for last domain access
 
-    def __init__(self, worker_id, config, frontier):
+    def __init__(self, worker_id, config, frontier, statistics):
         self.logger = get_logger(f"Worker-{worker_id}", "Worker")
         self.config = config
         self.frontier = frontier
-        self.statistics = Statistics() # TODO: shelve statistics
+        self.statistics = statistics
         # basic check for requests in scraper
         assert {getsource(scraper).find(req) for req in {"from requests import", "import requests"}} == {-1}, "Do not use requests in scraper.py"
         assert {getsource(scraper).find(req) for req in {"from urllib.request import", "import urllib.request"}} == {-1}, "Do not use urllib.request in scraper.py"
