@@ -51,37 +51,28 @@ class Worker(Thread):
                     f"Downloaded {tbd_url}, status <{resp.status}>, "
                     f"using cache {self.config.cache_server}.")
 
-                scraped_result = {}
-                scraped_result["status"] = resp.status
-                # Logic for returning error type based on status code, allowing possible retries, or alternative handling
-                # Since an invalid response also results in an empty scraped result
-                if resp.status != 200:
-                    scraped_result["error"] = resp.error
-                # Mark alias if redirected 
-                if tbd_url != resp.url:
-                    scraped_result["alias"] = [tbd_url]
-                    # Reject scraping if the redirected URL is not valid in some way
-                    # First is general validity, including checking URL within authorized domains
-                    if not is_valid(resp.url):
-                        scraped_result["error"] = "Unauthorized redirect"
-                    # Next robots.txt for specific, authorized domain
-                    # This has to stay after the is_valid check to avoid unnecessary robots.txt checks for invalid domains
-                    destination = urlparse(resp.url)
-                    if self.robots_cache.get(destination.netloc) == None: 
-                        self._update_cache(resp.url, destination)
-                    if not self.robots_cache[destination.netloc].can_crawl(resp.url):
-                        scraped_result["error"] = "Redirected URL disallowed by robots.txt"
-                    # Otherwise redirect is valid, but mark the destination URL to avoid rescraping
-                    scraped_result["destination"] = [resp.url]
-                # If response content is empty
-                if not resp.raw_response.content or resp.raw_response.content.strip() == "":
-                    scraped_result["error"] = "Dead"
-                # If there are no errors can scrape page
-                if not scraped_result.get("error"): 
-                    scraped_urls = scraper.scraper(tbd_url, resp, self.statistics)
-                    for scraped_url in scraped_urls:
-                        self.frontier.add_url(scraped_url)
+                # This is duplicate logic for checking redirects outside robots.txt
+                # Its ugly but I'd rather not break up the scraped_result object and pass it down
+                # And the recommendation was to keep all error/validation logic in scraper to allow unit testing
+                redirect_robots_allowed = True
+                destination = urlparse(resp.url)
+                if self.robots_cache.get(destination.netloc) == None: 
+                    self._update_cache(resp.url, destination)
+                if not self.robots_cache[destination.netloc].can_crawl(resp.url):
+                    redirect_robots_allowed = False
+                else:
+                    # !! 
+                    # Marks url as complete early to update robots cache (avoiding recrawling robots.txt)
+                    # Iffy code might cause issues with Akhil's 
+                    # (mark_url_complete also removes from in_use, which might trick later workers into thinking frontier is completely empty and the scraping is over)
                     self.frontier.mark_url_complete(tbd_url)
+
+                scraped_result = scraper(tbd_url, resp, self.statistics, redirect_robots_allowed)
+                links = scraped_result.get("urls", [])
+                for link in links:
+                    self.frontier.add_url(link)
+                self.frontier.mark_url_complete(tbd_url)
+                
                 # TODO: mark incomplete otherwise
                 # key "urls" being missing currently indicates failure to load
 
