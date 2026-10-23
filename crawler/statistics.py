@@ -123,7 +123,8 @@ class Statistics:
             return
         savefile = file or self._stats_file
         if not os.path.exists(savefile):
-            raise Exception("Attempting to load Statistics from a file that doesn't exist.")
+            self._logger.info("Statistics file doesn't exist yet.")
+            return
         with open(savefile, "rb") as f:
             stats = pickle.load(f)
 
