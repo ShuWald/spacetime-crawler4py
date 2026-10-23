@@ -18,8 +18,8 @@ EXTRACT_LINK_CASES = {
             ),
         ),
         "outputs": [
-            "https://www.ics.uci.edu/relative-page",
-            "https://www.cs.uci.edu/other-page#section",
+            "https://ics.uci.edu/relative-page",
+            "https://cs.uci.edu/other-page",
         ],
     },
     # (Currently) Return no links when the page contains no crawlable URLs.

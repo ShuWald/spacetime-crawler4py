@@ -33,7 +33,7 @@ SCRAPER_LOGIC_CASES = {
             ),
         ),
         "outputs": {
-            "urls": ["https://www.ics.uci.edu/retry"],
+            "urls": ["https://ics.uci.edu/retry"],
             "status": 503,
             "error": "service unavailable",
         },
@@ -54,8 +54,8 @@ SCRAPER_LOGIC_CASES = {
         ),
         "outputs": {
             "urls": [
-                "https://www.ics.uci.edu/first",
-                "https://www.ics.uci.edu/second",
+                "https://ics.uci.edu/first",
+                "https://ics.uci.edu/second",
             ],
         },
     },
@@ -73,7 +73,7 @@ SCRAPER_LOGIC_CASES = {
             ),
         ),
         "outputs": {
-            "urls": ["https://www.ics.uci.edu/next"],
+            "urls": ["https://ics.uci.edu/next"],
             "destination": ["https://www.ics.uci.edu/destination"],
             "alias": ["https://www.ics.uci.edu/original"],
         },

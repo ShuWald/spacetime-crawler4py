@@ -7,6 +7,7 @@ from urllib.parse import urlunparse
 import scraper
 import time
 import datetime
+from scraper import is_valid
 from robots import Robots
 
 class Worker(Thread):
@@ -48,12 +49,31 @@ class Worker(Thread):
                     f"Downloaded {tbd_url}, status <{resp.status}>, "
                     f"using cache {self.config.cache_server}.")
 
-                scraped = scraper.scraper(tbd_url, resp)
-                scraped_urls = scraped["urls"]
+                scraped_result = {}
+                scraped_result["status"] = resp.status
+                # Logic for returning error type based on status code, allowing possible retries, or alternative handling
+                # Since an invalid response also results in an empty scraped result
+                if resp.status != 200:
+                    scraped_result["error"] = resp.error
+                # Mark alias if redirected 
+                if tbd_url != resp.url:
+                    scraped_result["alias"] = [tbd_url]
+                    # Reject scraping if the redirected URL is not valid
+                    #TODO: Add robots.txt check for the redirected URL
+                    if not is_valid(resp.url):
+                        scraped_result["error"] = "Unauthorized redirect"
+                    # Otherwise mark the destination URL to avoid rescraping
+                    scraped_result["destination"] = [resp.url]
+                # If response content is empty
+                if not resp.raw_response.content or resp.raw_response.content.strip() == "":
+                    scraped_result["error"] = "Dead"
+                # If there are no errors can scrape page
+                if not scraped_result.get("error"): 
+                    scraped_urls = scraper.scraper(tbd_url, resp)
+                    for scraped_url in scraped_urls:
+                        self.frontier.add_url(scraped_url)
 
-                for scraped_url in scraped_urls:
-                    self.frontier.add_url(scraped_url)
-
+                #TODO: Return scraped_result to frontier
                 self.frontier.mark_url_complete(tbd_url)
 
                 # TODO: replace with proper politeness delays via frontier

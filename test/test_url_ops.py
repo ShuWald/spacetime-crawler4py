@@ -5,30 +5,68 @@ from utils import get_urlhash, normalize
 
 
 NORMALIZE_CASES = [
-    # Lowercase the scheme and hostname and add a root path.
+    # Basic absolute URLs are lowercased and receive a root path.
     {
         "inputs": ("HTTP://Example.COM",),
         "outputs": "http://example.com/",
     },
-    # Preserve the path, query, and fragment in a normalized URL.
+    # The common www. prefix is removed so equivalent deployed URLs match.
     {
-        "inputs": ("https://Example.COM/path?query=1#section",),
-        "outputs": "https://example.com/path?query=1#section",
+        "inputs": ("https://WWW.Example.COM/path",),
+        "outputs": "https://example.com/path",
     },
-    # Remove the fragment when keepFragments is false.
+    # Path trailing slashes are removed, except for the root path.
     {
-        "inputs": ("https://Example.COM/path?query=1#section", False),
-        "outputs": "https://example.com/path?query=1",
+        "inputs": ("https://example.com/path///",),
+        "outputs": "https://example.com/path",
     },
-    # Add a root path when the URL has no path.
     {
-        "inputs": ("https://example.com",),
+        "inputs": ("https://example.com///",),
         "outputs": "https://example.com/",
     },
-    # Error handling for non-string URLs return empty
+    # Default ports are removed, while non-default ports remain significant.
     {
-        "inputs": (2,),
-        "outputs": "",
+        "inputs": ("HTTPS://WWW.Example.COM:443/path/",),
+        "outputs": "https://example.com/path",
+    },
+    {
+        "inputs": ("http://www.example.com:80/path/",),
+        "outputs": "http://example.com/path",
+    },
+    {
+        "inputs": ("https://www.example.com:8443/path/",),
+        "outputs": "https://example.com:8443/path",
+    },
+    # Query strings and fragments are excluded by default.
+    {
+        "inputs": ("https://example.com/path?query=1#section",),
+        "outputs": "https://example.com/path",
+    },
+    # Query and fragment retention can be enabled independently.
+    {
+        "inputs": ("https://example.com/path?query=1#section", True),
+        "outputs": "https://example.com/path?query=1",
+    },
+    {
+        "inputs": ("https://example.com/path?query=1#section", False, True),
+        "outputs": "https://example.com/path#section",
+    },
+    {
+        "inputs": ("https://example.com/path?query=1#section", True, True),
+        "outputs": "https://example.com/path?query=1#section",
+    },
+    # Protocol-relative and relative inputs preserve their URL structure.
+    {
+        "inputs": ("//WWW.Example.COM/path/",),
+        "outputs": "//example.com/path",
+    },
+    {
+        "inputs": ("/relative/path/",),
+        "outputs": "/relative/path",
+    },
+    {
+        "inputs": ("?query=1#section",),
+        "outputs": "/",
     },
 ]
 
@@ -51,11 +89,11 @@ URLHASH_CASES = [
         ],
         "comparison": "equal",
     },
-    # Keep distinct fragments distinct in the URL hash.
+    # Keep distinct paths distinct in the URL hash.
     {
         "inputs": [
-            "https://example.com/page#one",
-            "https://example.com/page#two",
+            "https://example.com/page-one",
+            "https://example.com/page-two",
         ],
         "comparison": "not_equal",
     },
