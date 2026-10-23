@@ -95,9 +95,9 @@ class Frontier(object):
             return (self.in_use[minkey].pop(), self.timestamps[minkey], True)
         
         except IndexError:
-            return None
+            return (None, None, None)
         except Exception:
-            return None
+            return (None, None, None)
 
     def add_url(self, url):
         url = normalize(url)
