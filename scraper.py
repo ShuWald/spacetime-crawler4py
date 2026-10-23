@@ -20,7 +20,7 @@ ALLOWED_DOMAINS = (
 #         resp.raw_response.content: the content of the page!
 
 
-def scraper(url, resp):
+def scraper(url, resp, statistics):
     scraped_result = {"urls": []}
     status = resp.status
     # If there was an alias, mark the destination URL to avoid revisiting
@@ -39,10 +39,13 @@ def scraper(url, resp):
         error = resp.error
         scraped_result["status"] = status
         scraped_result["error"] = error
-    
-    # Relies on extract_next_links to validate, normalize, return absolute links
-    links = extract_next_links(resp)
-    scraped_result["urls"] = links
+
+    if resp.raw_response != None:
+        # Relies on extract_next_links to validate, normalize, return absolute links
+        parse = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
+        statistics.ingest(resp.url, parse)
+        links = extract_next_links(resp)
+        scraped_result["urls"] = links
     return scraped_result
 
 # Offloaded the redirect/unauthorized URL handling to the main scraper function, so link should be valid
@@ -62,7 +65,7 @@ def is_valid(url):
     if not isinstance(url, str):
         return False
 
-    # Decide whether to crawl this url or not. 
+    # Decide whether to crawl this url or not.
     # If you decide to crawl it, return True; otherwise return False.
     # There are already some conditions that return False.
     try:
