@@ -20,35 +20,16 @@ ALLOWED_DOMAINS = (
 #         resp.raw_response.content: the content of the page!
 
 
+# Offloaded the redirect/unauthorized URL handling to the worker, so can assume url is valid
 def scraper(url, resp, statistics):
-    scraped_result = {"urls": []}
-    status = resp.status
-    # If there was an alias, mark the destination URL to avoid revisiting
-    if url != resp.url:
-        scraped_result["destination"] = [resp.url]
-        # However ideally the frontier should already know the original URL(alias)
-        scraped_result["alias"] = [url]
-    # Preventing redirect to unauthorized or invalid URLs
-    if not is_valid(resp.url):
-        # Should mark the alias URL and terminate
-        scraped_result["alias"] = [url]
-        scraped_result["error"] = "Unauthorized redirect"
-        return scraped_result
-    if status != 200:
-        # Logic for returning error type based on status code, allowing possible retries, or alternative handling
-        error = resp.error
-        scraped_result["status"] = status
-        scraped_result["error"] = error
-
+    links = []
     if resp.raw_response != None:
-        # Relies on extract_next_links to validate, normalize, return absolute links
         parse = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
         statistics.ingest(resp.url, parse)
+        # Relies on extract_next_links to validate, normalize, return absolute links
         links = extract_next_links(resp)
-        scraped_result["urls"] = links
-    return scraped_result
+    return links
 
-# Offloaded the redirect/unauthorized URL handling to the main scraper function, so link should be valid
 def extract_next_links(resp):
     parser = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
     links = []
