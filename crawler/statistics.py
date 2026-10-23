@@ -34,7 +34,7 @@ class Statistics:
 
         if self._stats_file is not None:
             if restart:
-                if(os.path.exists(stats_file)):
+                if(os.path.exists(str(stats_file))):
                     os.remove(stats_file)
             else:
                 self.load()

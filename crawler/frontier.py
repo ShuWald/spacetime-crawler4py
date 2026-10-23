@@ -101,7 +101,6 @@ class Frontier(object):
     def add_url(self, url):
         url = normalize(url)
         urlhash = get_urlhash(url)
-        self.logger.info(f"Adding url: {url}")
         if urlhash not in self.save:
             self.save[urlhash] = (url, False)
             self.save.sync()
