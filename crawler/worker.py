@@ -51,12 +51,14 @@ class Worker(Thread):
                     f"using cache {self.config.cache_server}.")
 
                 scraped = scraper.scraper(tbd_url, resp, self.statistics)
-                scraped_urls = scraped["urls"]
+                scraped_urls = scraped.get("urls")
+                if scraped_urls != None:
+                    for scraped_url in scraped_urls:
+                        self.frontier.add_url(scraped_url)
 
-                for scraped_url in scraped_urls:
-                    self.frontier.add_url(scraped_url)
-
-                self.frontier.mark_url_complete(tbd_url)
+                    self.frontier.mark_url_complete(tbd_url)
+                # TODO: mark incomplete otherwise
+                # key "urls" being missing currently indicates failure to load
 
                 # TODO: replace with proper politeness delays via frontier
                 time.sleep(self.config.time_delay)

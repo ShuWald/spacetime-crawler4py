@@ -40,11 +40,12 @@ def scraper(url, resp, statistics):
         scraped_result["status"] = status
         scraped_result["error"] = error
 
-    # Relies on extract_next_links to validate, normalize, return absolute links
-    parse = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
-    statistics.ingest(resp.url, parse)
-    links = extract_next_links(resp)
-    scraped_result["urls"] = links
+    if resp.raw_response != None:
+        # Relies on extract_next_links to validate, normalize, return absolute links
+        parse = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
+        statistics.ingest(resp.url, parse)
+        links = extract_next_links(resp)
+        scraped_result["urls"] = links
     return scraped_result
 
 # Offloaded the redirect/unauthorized URL handling to the main scraper function, so link should be valid
