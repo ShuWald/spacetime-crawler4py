@@ -1,7 +1,7 @@
 import unittest
 
 from scraper import scraper
-from tests.mock import MockRawResponse, MockResponse
+from test.mock import MockRawResponse, MockResponse
 
 
 SCRAPER_LOGIC_CASES = {
