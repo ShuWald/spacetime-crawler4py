@@ -1,9 +1,0 @@
-## Scraper
-
-`scraper(url, resp)`
-\- Outputs JSON with additional detials such as redirects, unauthorized redirects, failures/error types
-
-
-## Logging
-\- Logging throughout functions? 
-\- Verbose toggle
