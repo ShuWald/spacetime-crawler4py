@@ -38,7 +38,7 @@ def get_urlhash(url):
     return sha256(hash_input.encode("utf-8")).hexdigest()
 
 # Normalize a URL, lowercases the scheme and netloc, ensures a path, and optionally keeps fragments
-def normalize(url, keepFragments=True):
+def normalize(url, keepFragments=False):
     if not isinstance(url, str):
         print(f"URL is not string: {url}")
         return ""

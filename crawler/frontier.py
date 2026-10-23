@@ -33,6 +33,7 @@ class Frontier(object):
         if restart:
             for url in self.config.seed_urls:
                 self.add_url(url)
+
         else:
             # Set the frontier state with contents of save file.
             self._parse_save_file()
@@ -64,8 +65,6 @@ class Frontier(object):
             f"total urls discovered.")
 
     def get_tbd_url(self):
-        print("tbd_url")
-
         try:
             # check datetime, return first instance with long enough or first instance of a None stored time
             mintime = None
@@ -74,7 +73,7 @@ class Frontier(object):
             for key in list(self.timestamps):
                 key_in_use = key in self.in_use
 
-                if (key == None or (now - self.timestamps[key] >= 0.5)) and not key_in_use: # i.e valid key found
+                if (self.timestamps[key] == None or (now - self.timestamps[key] >= 0.5)) and not key_in_use: # i.e valid key found
                     # do things
                     self.in_use[key] = self.to_be_downloaded[key] # store the key and list of urls
                     self.to_be_downloaded.pop(key, None)          # remove key value pair from dicctionary so we literally cant come across it, and slightly faster traversal
@@ -96,7 +95,7 @@ class Frontier(object):
         
         except IndexError:
             return (None, None, None)
-        except Exception:
+        except Exception as e:
             return (None, None, None)
 
     def add_url(self, url):
