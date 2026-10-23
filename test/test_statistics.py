@@ -1,3 +1,6 @@
+from test.mock import MakeStats
+from logging import Logger
+from utils.config import Config
 import unittest.async_case
 import bs4
 from crawler.statistics import Statistics
@@ -33,7 +36,7 @@ class StatisticsTests(unittest.TestCase):
     """, "html.parser")
 
     def test_stats(self):
-        a = Statistics()
+        a = MakeStats()
 
         a.ingest("https://fakeA.ics.uci.edu/page", self.sample_c)
         summary = a.summary(stop_words={"of", "these"}, domain_root="ics.uci.edu")
@@ -54,12 +57,12 @@ class StatisticsTests(unittest.TestCase):
         self.assertEqual(summary["ics_subdomain_pagecounts"], [("fakeA.ics.uci.edu", 1), ("fakeB.ics.uci.edu", 2), ("fakeC.ics.uci.edu", 2)])
 
     def test_union(self):
-        a = Statistics()
+        a = MakeStats()
         a.ingest("https://ics.uci.edu/something", self.sample_a)
-        b = Statistics()
+        b = MakeStats()
         b.ingest("https://example.com/story", self.sample_b)
 
-        ab1 = Statistics()
+        ab1 = MakeStats()
         ab1.ingest("https://ics.uci.edu/something", self.sample_a)
         ab1.ingest("https://example.com/story", self.sample_b)
 

@@ -2,7 +2,7 @@ from crawler.statistics import Statistics
 import unittest
 
 from scraper import scraper
-from test.mock import MockRawResponse, MockResponse
+from test.mock import MockRawResponse, MockResponse, MakeStats
 
 
 SCRAPER_LOGIC_CASES = {
@@ -84,7 +84,7 @@ SCRAPER_LOGIC_CASES = {
 
 class ScraperLogicTests(unittest.TestCase):
     def setUp(self):
-        self.statistics = Statistics()
+        self.statistics = MakeStats()
 
     def test_invalid_redirect(self):
         case = SCRAPER_LOGIC_CASES["test_invalid_redirect"]

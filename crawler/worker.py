@@ -60,6 +60,7 @@ class Worker(Thread):
                         f"using cache {self.config.cache_server}.")
 
                 scraped = scraper.scraper(tbd_url, resp, self.statistics)
+
                 scraped_urls = scraped.get("urls")
                 if scraped_urls != None:
                     for scraped_url in scraped_urls:
@@ -72,6 +73,7 @@ class Worker(Thread):
             except Exception as e:
                 pass 
                 # TODO: add bad URLs to lists in frontier once implemented
+
 
 
 
