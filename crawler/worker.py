@@ -34,8 +34,7 @@ class Worker(Thread):
                     downtime = 0.0
                 else:
                     downtime = self.config.time_delay - time_diff
-
-                time.sleep(downtime)
+                    time.sleep(downtime)
 
             if not tbd_url:
                 self.logger.info("Frontier is empty. Stopping Crawler.")
