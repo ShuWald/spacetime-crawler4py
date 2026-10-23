@@ -58,7 +58,7 @@ class Worker(Thread):
                     self.frontier.mark_url_complete(tbd_url)
 
                     # TODO: replace with proper politeness delays via frontier
-                    time.sleep(self.config.time_delay) 
+                    #time.sleep(self.config.time_delay) 
             except Exception as e:
                 pass 
                 # TODO: add bad URLs to lists in frontier once implemented
