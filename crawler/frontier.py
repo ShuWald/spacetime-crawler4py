@@ -80,7 +80,7 @@ class Frontier(object):
                     return self.in_use[key].pop()            # return frontmost url in domain url list
                     break
 
-                else: # key domain cant be accessed
+                else: # key domain shouldnt be accessed
                     if (mintime == None) or self.timestamps[key] < mintime: # found older access or no time stored
                         mintime = self.timestamps[key]
             
@@ -115,7 +115,7 @@ class Frontier(object):
         urlhash = get_urlhash(url)
 
         self.to_be_downloaded[domain] = self.in_use[domain] # add back into to_be_downloaded domain
-        self.in_use.pop(key, None)                          # remove from in_use
+        self.in_use.pop(domain, None)                          # remove from in_use
         self.timestamps[domain] = time.time()
 
         if urlhash not in self.save:
