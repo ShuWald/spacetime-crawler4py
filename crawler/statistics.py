@@ -30,7 +30,7 @@ class Statistics:
             with open(config.stopwords) as f:
                 self._stopwords = { w.strip() for w in f.readlines() }
         # None if not saving
-        self._stats_file = None if stats_file is "" else stats_file or config.stats_file
+        self._stats_file = None if stats_file == "" else stats_file or config.stats_file
 
         if self._stats_file is not None:
             if restart:
