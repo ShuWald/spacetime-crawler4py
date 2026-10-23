@@ -29,7 +29,10 @@ class Crawler(object):
         except Exception as e:
             print(f"Crawler failed with exception {e}")
         finally:
-            self.statistics.save()
+            try:
+                self.statistics.save()
+            except Exception as d:
+                print(f"Crawler failed to save statistics during previous error: {d}")
             # self.frontier.save()
             self.printSummary()
 
