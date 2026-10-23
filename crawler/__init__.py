@@ -33,9 +33,9 @@ class Crawler(object):
             self.printSummary()
 
     def printSummary(self):
-        s = self.statistics.summary("ics.uci.edu")
+        s = self.statistics.summary(domain_root="ics.uci.edu")
         print("----- Begin Crawl Report -----")
-        print(f"We found {s["unique_page_count"]} unique pages.")
+        print(f"We found {s['unique_page_count']} unique pages.")
         page, size = s["longest_page"]
         print(f"The longest page is {page} with {size} words.")
         print("The top few words are:")
