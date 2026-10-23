@@ -59,18 +59,16 @@ class Worker(Thread):
                 if tbd_url != resp.url:
                     scraped_result["alias"] = [tbd_url]
                     # Reject scraping if the redirected URL is not valid in some way
-                    # First general validity
+                    # First is general validity, including checking URL within authorized domains
                     if not is_valid(resp.url):
                         scraped_result["error"] = "Unauthorized redirect"
-                    # Next robots.txt for domain
-
-                    ### PLEASE check this code
-                    if self.robots_cache.get(resp.url.netloc) == None: 
-                        self._update_cache(resp.url, urlparse(resp.url))
-                    if not self.robots_cache[resp.url.netloc].can_crawl(resp.url):
+                    # Next robots.txt for specific, authorized domain
+                    # This has to stay after the is_valid check to avoid unnecessary robots.txt checks for invalid domains
+                    destination = urlparse(resp.url)
+                    if self.robots_cache.get(destination.netloc) == None: 
+                        self._update_cache(resp.url, destination)
+                    if not self.robots_cache[destination.netloc].can_crawl(resp.url):
                         scraped_result["error"] = "Redirected URL disallowed by robots.txt"
-                    ###
-                    
                     # Otherwise redirect is valid, but mark the destination URL to avoid rescraping
                     scraped_result["destination"] = [resp.url]
                 # If response content is empty
