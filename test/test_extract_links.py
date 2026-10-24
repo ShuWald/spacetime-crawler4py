@@ -1,3 +1,4 @@
+import bs4
 import unittest
 
 from test.mock import MockResponse, MockRawResponse
@@ -38,7 +39,8 @@ EXTRACT_LINK_CASES = {
 
 class ExtractNextLinksTests(unittest.TestCase):
     def assert_extract_case(self, case):
-        actual = extract_next_links(case["inputs"])
+        parser = bs4.BeautifulSoup(case["inputs"].raw_response.content, "html.parser")
+        actual = extract_next_links(case["inputs"], parser)
         expected = case["outputs"]
         self.assertEqual(
             actual,
