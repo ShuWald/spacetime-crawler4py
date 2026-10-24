@@ -150,7 +150,7 @@ class Statistics:
         self._urls = stats["_urls"]
         self._word_counts.update(stats["_word_counts"])
         self._longest_page = stats["_longest_page"]
-        self._fingerprints.update(stats["_fingerprints"])
+        self._fingerprints = stats["_fingerprints"]
 
 
     def get_hash_int(self, word: str):
