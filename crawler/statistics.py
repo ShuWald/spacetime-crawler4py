@@ -8,6 +8,8 @@ import bs4
 from collections import defaultdict
 import pickle
 import os
+import hashlib
+from collections import Counter
 
 class Statistics:
     re_word = re.compile("[a-zA-Z_0-9']+")
@@ -22,9 +24,11 @@ class Statistics:
         self._word_counts = defaultdict(lambda: 0) # all words, stopworded on query
         self._longest_page: tuple[str, int] = ("", 0) # (url, word count)
         self._urls: set[str] = set()
+        self._fingerprints = set()
 
         self._config = config
         self._logger = logger
+        self.similarity_treshold = 3
 
         if config.stopwords:
             with open(config.stopwords) as f:
@@ -34,8 +38,8 @@ class Statistics:
 
         if self._stats_file is not None:
             if restart:
-                if(os.path.exists(str(stats_file))):
-                    os.remove(stats_file)
+                if(os.path.exists(self._stats_file)):
+                    os.remove(self._stats_file)
             else:
                 self.load()
 
@@ -70,15 +74,29 @@ class Statistics:
         text = parse.get_text("\n", strip=True)
         words: list[str] = self.re_word.findall(text)
         word_count = len(words)
-        for word in words:
-            self._word_counts[word.lower()] += 1
-        if word_count > self._longest_page[1]:
-            self._longest_page = (url, word_count)
-        # expects normalized url input, except for fragments
-        url_norm = self._normalize(url)
-        self._urls.add(url_norm)
+
+        word_frequencies = dict(Counter(words))
+        page_fingerprint = 0
+        for word in self._word_counts:
+            page_fingerprint = self.get_fingerprint(word_frequencies)
+            
+
+        has_similar = self.has_similar(page_fingerprint, self.similarity_treshold)
+
+        if not has_similar:
+            self._fingerprints.add(page_fingerprint)
+            for word in words:
+                self._word_counts[word.lower()] += 1
+            if word_count > self._longest_page[1]:
+                self._longest_page = (url, word_count)
+            # expects normalized url input, except for fragments
+            url_norm = self._normalize(url)
+            self._urls.add(url_norm)
+
         if self._stats_file:
             self.save() # TODO: save only occasionally (same for frontier)
+
+        return not has_similar # most instances will let this drop, but ingest will return False if a given url/page is not unique
 
     """Returns an anonymous statistics object with no file to save at."""
     def union(self, other: 'Statistics') -> 'Statistics':
@@ -110,6 +128,7 @@ class Statistics:
             "_urls": self._urls,
             "_word_counts": store_word_counts,
             "_longest_page": self._longest_page,
+            "_fingerprints": self._fingerprints
         }
 
         with open(savefile, "wb") as f:
@@ -131,3 +150,38 @@ class Statistics:
         self._urls = stats["_urls"]
         self._word_counts.update(stats["_word_counts"])
         self._longest_page = stats["_longest_page"]
+        self._fingerprints = stats["_fingerprints"]
+
+
+    def get_hash_int(self, word: str):
+        obj = hashlib.blake2b(word.encode("utf-8"), digest_size=8)
+        return int(obj.hexdigest(), 16)
+
+    def get_fingerprint(self, tokens):
+        V = [0] * 64
+
+        for token, count in tokens.items():
+            hash_int = self.get_hash_int(token)
+
+            for i in range(64):
+                if(hash_int >> i) & 1:
+                    V[i] += count
+                else:
+                    V[i] -= count
+
+        fingerprint = 0
+        for i in range(64):
+            if V[i] > 0:
+                fingerprint = fingerprint | (1 << i)
+
+        return fingerprint
+
+    def compare_fingerprints(self, f1, f2):
+        return bin(f1 ^ f2).count('1')
+
+    def has_similar(self, f2, treshold: int):
+        for f1 in self._fingerprints:
+            if self.compare_fingerprints(f1, f2) <= treshold:
+                return True
+        return False
+    
