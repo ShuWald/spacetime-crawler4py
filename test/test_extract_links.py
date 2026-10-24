@@ -1,3 +1,4 @@
+import bs4
 import unittest
 
 from test.mock import MockResponse, MockRawResponse
@@ -18,8 +19,8 @@ EXTRACT_LINK_CASES = {
             ),
         ),
         "outputs": [
-            "https://www.ics.uci.edu/relative-page",
-            "https://www.cs.uci.edu/other-page#section",
+            "https://ics.uci.edu/relative-page",
+            "https://cs.uci.edu/other-page",
         ],
     },
     # (Currently) Return no links when the page contains no crawlable URLs.
@@ -37,13 +38,23 @@ EXTRACT_LINK_CASES = {
 
 
 class ExtractNextLinksTests(unittest.TestCase):
+    def assert_extract_case(self, case):
+        parser = bs4.BeautifulSoup(case["inputs"].raw_response.content, "html.parser")
+        actual = extract_next_links(case["inputs"], parser)
+        expected = case["outputs"]
+        self.assertEqual(
+            actual,
+            expected,
+            msg=f"\nActual output:\n{actual!r}\n\nExpected output:\n{expected!r}",
+        )
+
     def test_normalize_multiple_valid_invalid_links(self):
         case = EXTRACT_LINK_CASES["test_normalize_multiple_valid_invalid_links"]
-        self.assertEqual(extract_next_links(case["inputs"]), case["outputs"])
+        self.assert_extract_case(case)
 
     def test_no_valid_links(self):
         case = EXTRACT_LINK_CASES["test_no_valid_links"]
-        self.assertEqual(extract_next_links(case["inputs"]), case["outputs"])
+        self.assert_extract_case(case)
 
 
 if __name__ == "__main__":
