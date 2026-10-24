@@ -38,20 +38,22 @@ def scraper(url, resp, statistics, robots_allowed):
             scraped_result["error"] = "Unauthorized redirect domain"
         # Next robots.txt for specific, authorized domain
         # This has to stay after the is_valid check to avoid unnecessary robots.txt checks for invalid domains
-        if not robots_allowed:
+        elif not robots_allowed:
             scraped_result["error"] = "Redirected URL disallowed by robots.txt"
-        # Otherwise redirect is valid, so mark the destination URL to avoid rescraping
-        scraped_result["destination"] = [resp.url]
+        else:
+            # Otherwise redirect is valid, so mark the destination URL to avoid rescraping
+            # Similarity checks also avoid this
+            scraped_result["destination"] = [resp.url]
 
-    # If response content is empty
-    if not resp.raw_response.content or resp.raw_response.content.strip() == "":
-        scraped_result["error"] = "Dead"
-    # If there are no errors can scrape URLs
-    if "error" not in scraped_result:
-        parse = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
-        statistics.ingest(resp.url, parse)
-        # Relies on extract_next_links to validate, normalize, return absolute links
-        scraped_result["urls"] = extract_next_links(resp)
+        # If response content is empty
+        if not resp.raw_response.content or resp.raw_response.content.strip() == "":
+            scraped_result["error"] = "Dead"
+        # If there are no errors can scrape URLs
+        if "error" not in scraped_result:
+            parse = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
+            statistics.ingest(resp.url, parse)
+            # Relies on extract_next_links to validate, normalize, return absolute links
+            scraped_result["urls"] = extract_next_links(resp)
     return scraped_result
         
 
