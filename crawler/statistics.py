@@ -75,10 +75,9 @@ class Statistics:
         words: list[str] = self.re_word.findall(text)
         word_count = len(words)
 
-        word_frequencies = dict(Counter(words))
+        word_frequencies = dict(Counter(w.lower() for w in words))
         page_fingerprint = 0
-        for word in self._word_counts:
-            page_fingerprint = self.get_fingerprint(word_frequencies)
+        page_fingerprint = self.get_fingerprint(word_frequencies)
             
 
         has_similar = self.has_similar(page_fingerprint, self.similarity_treshold)
@@ -110,6 +109,7 @@ class Statistics:
         else:
             s._longest_page = other._longest_page
         s._urls = self._urls.union(other._urls)
+        s._fingerprints = self._fingerprints | other._fingerprints
         return s
 
     # combine statistics and put into save file

@@ -48,7 +48,7 @@ def scraper(url, resp, statistics):
         if page_is_unique:
             scraped_result["urls"] = links
         else:
-            scraped_result["urls]"] = []
+            scraped_result["urls"] = []
     return scraped_result
 
 # Offloaded the redirect/unauthorized URL handling to the main scraper function, so link should be valid
