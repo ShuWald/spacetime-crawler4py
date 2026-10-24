@@ -122,12 +122,16 @@ class Frontier(object):
             
     
     def mark_url_complete(self, url):
+        self.logger.info(f"Marking URL complete: {url}")
         urlhash = get_urlhash(url)
-
         domain = urlparse(url).netloc
 
-        self.to_be_downloaded[domain] = self.in_use[domain] # add back into to_be_downloaded domain
-        self.in_use.pop(domain, None)                          # remove from in_use
+        # Remove the URL from the in_use list first
+        self.in_use[domain].pop(self.in_use[domain].index(url))
+        # add back into to_be_downloaded domain
+        self.to_be_downloaded[domain] = self.in_use[domain]
+        # Remove the domain from in_use
+        self.in_use.pop(domain, None)
         self.timestamps[domain] = time.time()
 
         if urlhash not in self.save:
