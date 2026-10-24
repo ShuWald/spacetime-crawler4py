@@ -37,13 +37,22 @@ EXTRACT_LINK_CASES = {
 
 
 class ExtractNextLinksTests(unittest.TestCase):
+    def assert_extract_case(self, case):
+        actual = extract_next_links(case["inputs"])
+        expected = case["outputs"]
+        self.assertEqual(
+            actual,
+            expected,
+            msg=f"\nActual output:\n{actual!r}\n\nExpected output:\n{expected!r}",
+        )
+
     def test_normalize_multiple_valid_invalid_links(self):
         case = EXTRACT_LINK_CASES["test_normalize_multiple_valid_invalid_links"]
-        self.assertEqual(extract_next_links(case["inputs"]), case["outputs"])
+        self.assert_extract_case(case)
 
     def test_no_valid_links(self):
         case = EXTRACT_LINK_CASES["test_no_valid_links"]
-        self.assertEqual(extract_next_links(case["inputs"]), case["outputs"])
+        self.assert_extract_case(case)
 
 
 if __name__ == "__main__":

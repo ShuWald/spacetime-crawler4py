@@ -45,15 +45,16 @@ def scraper(url, resp, statistics, robots_allowed):
             # Similarity checks also avoid this
             scraped_result["destination"] = [resp.url]
 
-        # If response content is empty
-        if not resp.raw_response.content or resp.raw_response.content.strip() == "":
-            scraped_result["error"] = "Dead"
-        # If there are no errors can scrape URLs
-        if "error" not in scraped_result:
-            parse = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
-            statistics.ingest(resp.url, parse)
-            # Relies on extract_next_links to validate, normalize, return absolute links
-            scraped_result["urls"] = extract_next_links(resp)
+    # If response content is empty
+    if not resp.raw_response.content or resp.raw_response.content.strip() == "":
+        scraped_result["error"] = "Dead"
+    # If there are no errors can scrape URLs
+    if "error" not in scraped_result:
+        parse = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
+        # TODO: Check for similarity here
+        statistics.ingest(resp.url, parse)
+        # Relies on extract_next_links to validate, normalize, return absolute links
+        scraped_result["urls"] = extract_next_links(resp)
     return scraped_result
         
 

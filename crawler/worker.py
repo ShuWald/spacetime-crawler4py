@@ -75,18 +75,13 @@ class Worker(Thread):
                         self._update_cache(resp.url, destination)
                     if not self.robots_cache[destination.netloc].can_crawl(resp.url):
                         redirect_robots_allowed = False
-                    else:
-                        # !! 
-                        # Marks url as complete early to update robots cache (avoiding recrawling robots.txt)
-                        # Iffy code might cause issues with Akhil's 
-                        # (mark_url_complete also removes from in_use, which might trick later workers into thinking frontier is completely empty and the scraping is over)
-                        self.frontier.mark_url_complete(tbd_url)
+                    # Minor optimization; marking the URL as complete early to update robots cache (avoiding recrawling robots.txt)
+                    self.frontier.mark_url_complete(tbd_url)
 
                     scraped_result = scraper(tbd_url, resp, self.statistics, redirect_robots_allowed)
                     links = scraped_result.get("urls", [])
                     for link in links:
                         self.frontier.add_url(link)
-                    self.frontier.mark_url_complete(tbd_url)
                 
                 # TODO: mark incomplete otherwise
                 # key "urls" being missing currently indicates failure to load

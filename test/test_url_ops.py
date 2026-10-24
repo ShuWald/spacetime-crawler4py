@@ -101,6 +101,21 @@ URLHASH_CASES = [
 
 
 class UrlOperationsTests(unittest.TestCase):
+    def assert_url_case(self, function, case):
+        actual = function(*case["inputs"])
+        expected = case["outputs"]
+        self.assertEqual(
+            actual,
+            expected,
+            msg=f"\nActual output:\n{actual!r}\n\nExpected output:\n{expected!r}",
+        )
+
+    def assert_url_cases_recursively(self, function, cases, index=0):
+        if index == len(cases):
+            return
+        self.assert_url_case(function, cases[index])
+        self.assert_url_cases_recursively(function, cases, index + 1)
+
     def test_is_valid_cases(self):
         valid_urls = [
             "https://ics.uci.edu/",
@@ -119,36 +134,62 @@ class UrlOperationsTests(unittest.TestCase):
         ]
 
         for url in valid_urls:
-            with self.subTest(url=url):
-                self.assertTrue(is_valid(url))
+            actual = is_valid(url)
+            expected = True
+            self.assertEqual(
+                actual,
+                expected,
+                msg=f"\nActual output:\n{actual!r}\n\nExpected output:\n{expected!r}",
+            )
 
         for url in invalid_urls:
-            with self.subTest(url=url):
-                self.assertFalse(is_valid(url))
+            actual = is_valid(url)
+            expected = False
+            self.assertEqual(
+                actual,
+                expected,
+                msg=f"\nActual output:\n{actual!r}\n\nExpected output:\n{expected!r}",
+            )
 
     def test_normalize_cases(self):
-        for case in NORMALIZE_CASES:
-            with self.subTest(inputs=case["inputs"]):
-                self.assertEqual(normalize(*case["inputs"]), case["outputs"])
+        self.assert_url_cases_recursively(normalize, NORMALIZE_CASES)
 
     def test_get_urlhash_cases(self):
         equivalent_case = URLHASH_CASES[0]
         equivalent_hashes = [
             get_urlhash(url) for url in equivalent_case["inputs"]
         ]
-        self.assertEqual(equivalent_hashes[0], equivalent_hashes[1])
-        self.assertEqual(equivalent_hashes[1], equivalent_hashes[2])
+        actual = equivalent_hashes[1]
+        expected = equivalent_hashes[0]
+        self.assertEqual(
+            actual,
+            expected,
+            msg=f"\nActual output:\n{actual!r}\n\nExpected output:\n{expected!r}",
+        )
+        actual = equivalent_hashes[2]
+        expected = equivalent_hashes[1]
+        self.assertEqual(
+            actual,
+            expected,
+            msg=f"\nActual output:\n{actual!r}\n\nExpected output:\n{expected!r}",
+        )
 
         path_case = URLHASH_CASES[1]
+        actual = get_urlhash(path_case["inputs"][1])
+        expected = get_urlhash(path_case["inputs"][0])
         self.assertEqual(
-            get_urlhash(path_case["inputs"][0]),
-            get_urlhash(path_case["inputs"][1]),
+            actual,
+            expected,
+            msg=f"\nActual output:\n{actual!r}\n\nExpected output:\n{expected!r}",
         )
 
         distinct_fragment_case = URLHASH_CASES[2]
+        actual = get_urlhash(distinct_fragment_case["inputs"][0])
+        expected = get_urlhash(distinct_fragment_case["inputs"][1])
         self.assertNotEqual(
-            get_urlhash(distinct_fragment_case["inputs"][0]),
-            get_urlhash(distinct_fragment_case["inputs"][1]),
+            actual,
+            expected,
+            msg=f"\nActual output:\n{actual!r}\n\nExpected output:\n{expected!r}",
         )
 
 

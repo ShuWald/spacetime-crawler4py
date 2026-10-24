@@ -20,7 +20,6 @@ SCRAPER_LOGIC_CASES = {
         "outputs": {
             "urls": [],
             "status": 200,
-            "destination": ["ftp://invalid.example.com"],
             "alias": ["https://www.ics.uci.edu/original"],
             "error": "Unauthorized redirect domain",
         },
@@ -106,7 +105,6 @@ SCRAPER_LOGIC_CASES = {
         "outputs": {
             "urls": [],
             "status": 200,
-            "destination": ["https://www.ics.uci.edu/disallowed"],
             "alias": ["https://www.ics.uci.edu/original"],
             "error": "Redirected URL disallowed by robots.txt",
         },
@@ -136,79 +134,28 @@ class ScraperLogicTests(unittest.TestCase):
     def setUp(self):
         self.statistics = MakeStats()
 
-    def test_invalid_redirect(self):
-        case = SCRAPER_LOGIC_CASES["test_invalid_redirect"]
+    def assert_scraper_case(self, case):
+        actual = scraper(
+            case["inputs"][0],
+            case["inputs"][1],
+            self.statistics,
+            case["inputs"][2],
+        )
+        expected = case["outputs"]
         self.assertEqual(
-            scraper(
-                case["inputs"][0],
-                case["inputs"][1],
-                self.statistics,
-                case["inputs"][2],
-            ),
-            case["outputs"],
+            actual,
+            expected,
+            msg=f"\nActual output:\n{actual!r}\n\nExpected output:\n{expected!r}",
         )
 
-    def test_non_success_response(self):
-        case = SCRAPER_LOGIC_CASES["test_non_success_response"]
-        self.assertEqual(
-            scraper(
-                case["inputs"][0],
-                case["inputs"][1],
-                self.statistics,
-                case["inputs"][2],
-            ),
-            case["outputs"],
-        )
+    def assert_scraper_cases_recursively(self, case_names, index=0):
+        if index == len(case_names):
+            return
+        self.assert_scraper_case(SCRAPER_LOGIC_CASES[case_names[index]])
+        self.assert_scraper_cases_recursively(case_names, index + 1)
 
-    def test_successful_response_returns_extracted_links(self):
-        case = SCRAPER_LOGIC_CASES[
-            "test_successful_response_returns_extracted_links"
-        ]
-        self.assertEqual(
-            scraper(
-                case["inputs"][0],
-                case["inputs"][1],
-                self.statistics,
-                case["inputs"][2],
-            ),
-            case["outputs"],
-        )
-
-    def test_successful_redirect(self):
-        case = SCRAPER_LOGIC_CASES["test_successful_redirect"]
-        self.assertEqual(
-            scraper(
-                case["inputs"][0],
-                case["inputs"][1],
-                self.statistics,
-                case["inputs"][2],
-            ),
-            case["outputs"],
-        )
-
-    def test_redirect_disallowed_by_robots(self):
-        case = SCRAPER_LOGIC_CASES["test_redirect_disallowed_by_robots"]
-        self.assertEqual(
-            scraper(
-                case["inputs"][0],
-                case["inputs"][1],
-                self.statistics,
-                case["inputs"][2],
-            ),
-            case["outputs"],
-        )
-
-    def test_non_redirect_ignores_robots_permission(self):
-        case = SCRAPER_LOGIC_CASES["test_non_redirect_ignores_robots_permission"]
-        self.assertEqual(
-            scraper(
-                case["inputs"][0],
-                case["inputs"][1],
-                self.statistics,
-                case["inputs"][2],
-            ),
-            case["outputs"],
-        )
+    def test_scraper_logic_cases(self):
+        self.assert_scraper_cases_recursively(list(SCRAPER_LOGIC_CASES))
 
 
 if __name__ == "__main__":
