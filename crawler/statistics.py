@@ -128,7 +128,7 @@ class Statistics:
             "_urls": self._urls,
             "_word_counts": store_word_counts,
             "_longest_page": self._longest_page,
-            "_fingerprints": self._fingerprints
+            "_fingerprints": self._fingerprints,
         }
 
         with open(savefile, "wb") as f:
@@ -146,11 +146,11 @@ class Statistics:
             return
         with open(savefile, "rb") as f:
             stats = pickle.load(f)
-
+    
         self._urls = stats["_urls"]
         self._word_counts.update(stats["_word_counts"])
         self._longest_page = stats["_longest_page"]
-        self._fingerprints = stats["_fingerprints"]
+        self._fingerprints.update(stats["_fingerprints"])
 
 
     def get_hash_int(self, word: str):
