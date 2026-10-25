@@ -37,22 +37,20 @@ def get_urlhash(url):
 
     return sha256(hash_input.encode("utf-8")).hexdigest()
 
-# Normalize a URL, lowercases the scheme and netloc, ensures a path, and optionally keeps fragments
-def normalize(url, keepFragments=False):
-    if not isinstance(url, str):
-        print(f"URL is not string: {url}")
-        return ""
-    
+# Normalize a URL, lowercases the scheme and netloc, ensures a path, and optionally keeps the query
+def normalize(url, keepQuery=False, keepFragment=False):
     parts = urlsplit(url)
     scheme = parts.scheme.lower()
     netloc = parts.netloc.lower()
-    path = parts.path or "/"
-    fragment = parts.fragment if keepFragments else ""
+    path = parts.path.rstrip("/") or "/"
+    query = parts.query if keepQuery else ""
+    fragment = parts.fragment if keepFragment else ""
 
-    return urlunsplit((
-        scheme,
-        netloc,
-        path,
-        parts.query,
-        fragment
-    ))
+    if netloc.startswith("www."):
+        netloc = netloc[4:]
+    if scheme == "https" and netloc.endswith(":443"):
+        netloc = netloc[:-4]
+    elif scheme == "http" and netloc.endswith(":80"):
+        netloc = netloc[:-3]
+
+    return urlunsplit((scheme, netloc, path, query, fragment))

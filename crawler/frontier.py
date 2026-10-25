@@ -14,7 +14,7 @@ class Frontier(object):
     def __init__(self, config, restart):
         self.logger = get_logger("FRONTIER")
         self.config = config
-        self.to_be_downloaded = {} # stores domain : list[url]
+        self.to_be_downloaded = {} # stores domain : list[url] 
         self.in_use = {}           # stores domain : list[url]
         self.timestamps = {}        # stores domain : date
         

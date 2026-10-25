@@ -20,27 +20,39 @@ ALLOWED_DOMAINS = (
 #         resp.raw_response.content: the content of the page!
 
 
-def scraper(url, resp, statistics):
-    scraped_result = {"urls": []}
-    status = resp.status
-    # If there was an alias, mark the destination URL to avoid revisiting
+# Offloaded the redirect/unauthorized URL handling to the worker, so can assume url is valid
+def scraper(url, resp, statistics, robots_allowed):
+    scraped_result = {}
+    scraped_result["urls"] = []
+    scraped_result["status"] = resp.status
+    # Logic for returning error type based on status code, allowing possible retries, or alternative handling
+    # Since an invalid response also results in an empty scraped result
+    if resp.status != 200:
+        scraped_result["error"] = resp.error
+    # Mark alias if redirected 
     if url != resp.url:
-        scraped_result["destination"] = [resp.url]
-        # However ideally the frontier should already know the original URL(alias)
         scraped_result["alias"] = [url]
-    # Preventing redirect to unauthorized or invalid URLs
-    if not is_valid(resp.url):
-        # Should mark the alias URL and terminate
-        scraped_result["alias"] = [url]
-        scraped_result["error"] = "Unauthorized redirect"
-        return scraped_result
-    if status != 200:
-        # Logic for returning error type based on status code, allowing possible retries, or alternative handling
-        error = resp.error
-        scraped_result["status"] = status
-        scraped_result["error"] = error
+        # Reject scraping if the redirected URL is not valid in some way
+        # First is general validity, including checking URL within authorized domains
+        if not is_valid(resp.url):
+            scraped_result["error"] = "Unauthorized redirect domain"
+        # Next robots.txt for specific, authorized domain
+        # This has to stay after the is_valid check to avoid unnecessary robots.txt checks for invalid domains
+        elif not robots_allowed:
+            scraped_result["error"] = "Redirected URL disallowed by robots.txt"
+        else:
+            # Otherwise redirect is valid, so mark the destination URL to avoid rescraping
+            # Similarity checks also avoid this
+            scraped_result["destination"] = [resp.url]
 
-    if resp.raw_response != None:
+    # If response content is empty
+    if not resp.raw_response.content or resp.raw_response.content.strip() == "":
+        scraped_result["error"] = "Dead"
+    # If there are no errors can scrape URLs
+    if "error" not in scraped_result:
+        parser = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
+        # TODO: Check for similarity here
+        statistics.ingest(resp.url, parser)
         # Relies on extract_next_links to validate, normalize, return absolute links
         parse = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
         page_is_unique = statistics.ingest(resp.url, parse)
@@ -50,10 +62,9 @@ def scraper(url, resp, statistics):
         else:
             scraped_result["urls"] = []
     return scraped_result
+        
 
-# Offloaded the redirect/unauthorized URL handling to the main scraper function, so link should be valid
-def extract_next_links(resp):
-    parser = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
+def extract_next_links(resp, parser):
     links = []
     for a in parser.find_all("a", href = True):
         raw_href = a.get("href")
