@@ -98,8 +98,7 @@ class Frontier(object):
         except IndexError:
             return (None, None, None)
         except Exception as e:
-            print(f"{e}")
-            raise
+            self.logger.info(f"Exception occurred while fetching URL from frontier: {e}")
             return (None, None, None)
 
     def add_url(self, url):
@@ -123,11 +122,12 @@ class Frontier(object):
     
     def mark_url_complete(self, url):
         urlhash = get_urlhash(url)
-
         domain = urlparse(url).netloc
 
-        self.to_be_downloaded[domain] = self.in_use[domain] # add back into to_be_downloaded domain
-        self.in_use.pop(domain, None)                          # remove from in_use
+        # add back into to_be_downloaded domain
+        self.to_be_downloaded[domain] = self.in_use[domain]
+        # Remove the domain from in_use
+        self.in_use.pop(domain, None)
         self.timestamps[domain] = time.time()
 
         if urlhash not in self.save:

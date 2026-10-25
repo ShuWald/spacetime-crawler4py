@@ -5,10 +5,9 @@ from utils.download import download
 from utils import get_logger
 from urllib.parse import urlparse
 from urllib.parse import urlunparse
-import scraper
 import time
 import datetime
-from scraper import is_valid
+from scraper import scraper, is_valid
 from robots import Robots
 
 class Worker(Thread):
@@ -52,8 +51,8 @@ class Worker(Thread):
 
             try: # in the event that the URL causes an error so catastrophic none of the other modules can handle it, skip the url
                 parse_url = urlparse(tbd_url)
-
                 domain = parse_url.netloc
+
                 if self.robots_cache.get(domain) == None: # never before seen domain, add Robot to cache
                     self._update_cache(tbd_url, parse_url)
 
@@ -70,19 +69,23 @@ class Worker(Thread):
                     # This is duplicate logic for checking redirects outside robots.txt
                     # Its ugly but I'd rather not break up the scraped_result object and pass it down
                     # And the recommendation was to keep all error/validation logic in scraper to allow unit testing
-                    redirect_robots_allowed = True
-                    destination = urlparse(resp.url)
-                    if self.robots_cache.get(destination.netloc) == None: 
-                        self._update_cache(resp.url, destination)
-                    if not self.robots_cache[destination.netloc].can_crawl(resp.url):
-                        redirect_robots_allowed = False
-                    # Minor optimization; marking the URL as complete early to update robots cache (avoiding recrawling robots.txt)
-                    self.frontier.mark_url_complete(tbd_url)
+                    if is_valid(resp.url):
+                        redirect_robots_allowed = True
+                        destination = urlparse(resp.url)
+                        if self.robots_cache.get(destination.netloc) == None: 
+                            self._update_cache(resp.url, destination)
+                        if not self.robots_cache[destination.netloc].can_crawl(resp.url):
+                            redirect_robots_allowed = False
+                    # Doesn't work, removing from frontier early affects scraping
+                    # ~~Minor optimization; marking the URL as complete early to update robots cache (avoiding recrawling robots.txt)~~
+                    #self.frontier.mark_url_complete(tbd_url)
 
                     scraped_result = scraper(tbd_url, resp, self.statistics, redirect_robots_allowed)
+                    self.logger.info(f"Scraped result for URL {tbd_url}: {scraped_result}")
                     links = scraped_result.get("urls", [])
                     for link in links:
                         self.frontier.add_url(link)
+                    self.frontier.mark_url_complete(tbd_url)
                 
                 # TODO: mark incomplete otherwise
                 # key "urls" being missing currently indicates failure to load
@@ -90,7 +93,7 @@ class Worker(Thread):
                     # TODO: replace with proper politeness delays via frontier
                     #time.sleep(self.config.time_delay) 
             except Exception as e:
-                pass 
+                self.logger.error(f"Exception occurred while scraping URL: {e}")
                 # TODO: add bad URLs to lists in frontier once implemented
 
 

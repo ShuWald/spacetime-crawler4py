@@ -50,13 +50,10 @@ def scraper(url, resp, statistics, robots_allowed):
         scraped_result["error"] = "Dead"
     # If there are no errors can scrape URLs
     if "error" not in scraped_result:
+        print(f"No errors found for URL: {url}")
         parser = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
-        # TODO: Check for similarity here
-        statistics.ingest(resp.url, parser)
-        # Relies on extract_next_links to validate, normalize, return absolute links
-        parse = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
-        page_is_unique = statistics.ingest(resp.url, parse)
-        links = extract_next_links(resp)
+        page_is_unique = statistics.ingest(resp.url, parser)
+        links = extract_next_links(resp, parser)
         if page_is_unique:
             scraped_result["urls"] = links
         else:
