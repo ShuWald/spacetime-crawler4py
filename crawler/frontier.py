@@ -70,6 +70,7 @@ class Frontier(object):
             mintime = None
             minkey = None
             now = time.time()
+            
             for key in list(self.timestamps):
                 key_in_use = key in self.in_use
 
@@ -78,9 +79,9 @@ class Frontier(object):
                     #self.in_use[key] = self.to_be_downloaded[key] # store the key and list of urls
                     #self.to_be_downloaded.pop(key, None)          # remove key value pair from dicctionary so we literally cant come across it, and slightly faster traversal
                     #return (self.in_use[key].pop(), self.timestamps[key], False)            # return frontmost url in domain url list
-                    
 
-                if not key_in_use: # key domain not in use
+                # check if domain that are not in use and if it still has no URLs to be downloaded
+                if not key_in_use and len(self.to_be_downloaded[key]) != 0: # key domain not in use
                     if self.timestamps[key] is None:
                         minkey = key
                     elif (mintime == None) or self.timestamps[key] < mintime: # found older access or no time stored
@@ -88,12 +89,18 @@ class Frontier(object):
                         minkey = key
                 else: # domain in use
                     pass
+
+            if minkey is None:
+                return (None, None, None) # no valid domain found
             
             # if we get to this point, then we havent found valid domain within time (aka for all times in timestamps, now - timestamp <= 0.5), so wait and try again
+
             self.in_use[minkey] = self.to_be_downloaded[minkey]
             self.to_be_downloaded.pop(minkey, None)
             # if key at minkey cant be accessed, i.e to_be_downloaded is empty, will throw value error, in which case we return None
             return (self.in_use[minkey].pop(), self.timestamps[minkey], True)
+        
+        
         
         except IndexError:
             return (None, None, None)

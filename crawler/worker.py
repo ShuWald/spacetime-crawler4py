@@ -76,8 +76,6 @@ class Worker(Thread):
                             self._update_cache(resp.url, destination)
                         if not self.robots_cache[destination.netloc].can_crawl(resp.url):
                             redirect_robots_allowed = False
-                    # ~~Minor optimization; marking the URL as complete early to update robots cache (avoiding recrawling robots.txt)~~
-                    self.frontier.mark_url_complete(tbd_url)
 
                     scraped_result = scraper(tbd_url, resp, self.statistics, redirect_robots_allowed)
                     links = scraped_result.get("urls", [])
@@ -92,6 +90,14 @@ class Worker(Thread):
             except Exception as e:
                 self.logger.error(f"Exception occurred while scraping URL: {e}")
                 # TODO: add bad URLs to lists in frontier once implemented
+
+
+            # domains are always released from in_use in the case that the URL is downloaded successfully, fails to download, or blocked by robots.txt. Allows other URLs to be visited within the same domain
+            # does not revisit failed URLs within a domain 
+
+            finally :
+                self.frontier.mark_url_complete(tbd_url)
+                self.logger.info(f"Marked {tbd_url} as complete.")
 
 
 
