@@ -58,7 +58,6 @@ def scraper(url, resp, statistics, robots_allowed):
             scraped_result["urls"] = links
         else:
             scraped_result["urls"] = []
-        scraped_result["urls"] = extract_next_links(resp, parser)
     return scraped_result
         
 

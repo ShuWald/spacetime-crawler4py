@@ -29,7 +29,6 @@ class Worker(Thread):
     def run(self):
         while True:
             tbd_url, timestamp, downtime_needed = self.frontier.get_tbd_url() # string, float
-            self.logger.info(f"Fetched URL {tbd_url}, timestamp: {timestamp}, downtime_needed: {downtime_needed}.")
             if timestamp is not None:
                 time_diff = time.time() - timestamp
 
