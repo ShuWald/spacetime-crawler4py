@@ -73,15 +73,17 @@ class Frontier(object):
             for key in list(self.timestamps):
                 key_in_use = key in self.in_use
 
-                if (self.timestamps[key] == None or (now - self.timestamps[key] >= 0.5)) and not key_in_use: # i.e valid key found
+                #if (self.timestamps[key] == None or (now - self.timestamps[key] >= 0.5)) and not key_in_use: # i.e valid key found
                     # do things
-                    self.in_use[key] = self.to_be_downloaded[key] # store the key and list of urls
-                    self.to_be_downloaded.pop(key, None)          # remove key value pair from dicctionary so we literally cant come across it, and slightly faster traversal
-                    return (self.in_use[key].pop(), self.timestamps[key], False)            # return frontmost url in domain url list
+                    #self.in_use[key] = self.to_be_downloaded[key] # store the key and list of urls
+                    #self.to_be_downloaded.pop(key, None)          # remove key value pair from dicctionary so we literally cant come across it, and slightly faster traversal
+                    #return (self.in_use[key].pop(), self.timestamps[key], False)            # return frontmost url in domain url list
                     
 
-                elif not key_in_use: # key domain not in use but timed out
-                    if (mintime == None) or self.timestamps[key] < mintime: # found older access or no time stored
+                if not key_in_use: # key domain not in use
+                    if self.timestamps[key] is None:
+                        minkey = key
+                    elif (mintime == None) or self.timestamps[key] < mintime: # found older access or no time stored
                         mintime = self.timestamps[key]
                         minkey = key
                 else: # domain in use
@@ -96,6 +98,8 @@ class Frontier(object):
         except IndexError:
             return (None, None, None)
         except Exception as e:
+            print(f"{e}")
+            raise
             return (None, None, None)
 
     def add_url(self, url):

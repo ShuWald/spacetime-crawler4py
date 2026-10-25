@@ -30,11 +30,12 @@ class Worker(Thread):
     def run(self):
         while True:
             tbd_url, timestamp, downtime_needed = self.frontier.get_tbd_url() # string, float
-            if downtime_needed:
+            if timestamp is not None:
                 time_diff = time.time() - timestamp
 
                 if time_diff >= self.config.time_delay:
                     downtime = 0.0
+                
                 else:
                     downtime = self.config.time_delay - time_diff
                     time.sleep(downtime)

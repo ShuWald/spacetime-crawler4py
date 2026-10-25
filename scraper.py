@@ -54,7 +54,13 @@ def scraper(url, resp, statistics, robots_allowed):
         # TODO: Check for similarity here
         statistics.ingest(resp.url, parser)
         # Relies on extract_next_links to validate, normalize, return absolute links
-        scraped_result["urls"] = extract_next_links(resp, parser)
+        parse = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
+        page_is_unique = statistics.ingest(resp.url, parse)
+        links = extract_next_links(resp)
+        if page_is_unique:
+            scraped_result["urls"] = links
+        else:
+            scraped_result["urls"] = []
     return scraped_result
         
 
