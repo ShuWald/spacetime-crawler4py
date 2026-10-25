@@ -7,10 +7,13 @@ from queue import Queue, Empty
 from utils import get_logger, get_urlhash, normalize
 from scraper import is_valid
 
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunsplit, parse_qsl, urlencode
 import time
 
 class Frontier(object):
+
+    IGNORED_QUERIES = {"year", "month", "version", "day", "share", "date"}
+
     def __init__(self, config, restart):
         self.logger = get_logger("FRONTIER")
         self.config = config
@@ -111,9 +114,12 @@ class Frontier(object):
 
     def add_url(self, url):
         url = normalize(url)
-        urlhash = get_urlhash(url)
-        if urlhash not in self.save:
-            self.save[urlhash] = (url, False)
+        check_url = self._query_normalization(url) # organize queries
+        urlhash = get_urlhash(check_url)
+
+
+        if urlhash not in self.save: # check if the query_organized_hash has been saved
+            self.save[urlhash] = (url, False) # save the query_organized_hash
             self.save.sync()
 
             domain = urlparse(url).netloc
@@ -129,8 +135,14 @@ class Frontier(object):
             
     
     def mark_url_complete(self, url):
+        url = self._query_normalization(url) # organize queries
         urlhash = get_urlhash(url)
+
         domain = urlparse(url).netloc
+
+        if domain not in self.in_use:
+            self.logger.error(f"Completed url {url} but {domain} was not in use")
+            return
 
         # add back into to_be_downloaded domain
         self.to_be_downloaded[domain] = self.in_use[domain]
@@ -143,5 +155,17 @@ class Frontier(object):
             self.logger.error(
                 f"Completed url {url}, but have not seen it before.")
 
-        self.save[urlhash] = (url, True)
+        self.save[urlhash] = (self.save[urlhash][0], True)
         self.save.sync()
+
+    def _query_normalization(self, url):
+        '''Removes queries from frontier.IGNORED_QUERIES, and orders the queries in alphabetical order'''
+        parts = urlparse(url)
+
+        queries = [(key, value) for key, value in parse_qsl(parts.query, keep_blank_values=True) if key.lower() not in self.IGNORED_QUERIES]
+
+        queries.sort(key=lambda item: item[0])
+
+        return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(queries),parts.fragment))
+        
+        
