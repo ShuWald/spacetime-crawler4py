@@ -60,7 +60,7 @@ class Statistics:
 
         top_words = sorted([wc for wc in self._word_counts.items() if wc[0] not in stop_words], key=lambda wc: wc[1], reverse=True)
         top_words = top_words[:50]
-        print(self._urls)
+        #print(self._urls)
         unique_pages = len(self._urls)
 
         return {

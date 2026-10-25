@@ -84,6 +84,7 @@ class Frontier(object):
                 if not key_in_use and len(self.to_be_downloaded[key]) != 0: # key domain not in use
                     if self.timestamps[key] is None:
                         minkey = key
+                        break
                     elif (mintime == None) or self.timestamps[key] < mintime: # found older access or no time stored
                         mintime = self.timestamps[key]
                         minkey = key
