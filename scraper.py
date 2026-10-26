@@ -21,7 +21,7 @@ ALLOWED_DOMAINS = (
 
 
 # Offloaded the redirect/unauthorized URL handling to the worker, so can assume url is valid
-def scraper(url, resp, statistics, robots_allowed):
+def scraper(url, resp, statistics, robots_allowed, logger = None):
     scraped_result = {}
     scraped_result["urls"] = []
     scraped_result["status"] = resp.status
@@ -52,22 +52,32 @@ def scraper(url, resp, statistics, robots_allowed):
     if "error" not in scraped_result:
         parser = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
         page_is_unique = statistics.ingest(resp.url, parser)
-        links = extract_next_links(resp, parser)
+
+        links = extract_next_links(resp, parser, (contains_date(resp.url) or contains_date(url)))
+        
         if page_is_unique:
             scraped_result["urls"] = links
         else:
+            if logger != None:
+                logger.info(f"Ignored links from {url} due to similarity")
             scraped_result["urls"] = []
     return scraped_result
         
 
-def extract_next_links(resp, parser):
+def extract_next_links(resp, parser, url_has_date=False):
     links = []
     for a in parser.find_all("a", href = True):
         raw_href = a.get("href")
         absolute_href = urljoin(resp.url, raw_href)
         final_href = normalize(absolute_href)
         if is_valid(final_href):
-            links.append(final_href)
+            if not url_has_date:
+                links.append(final_href)
+            elif url_has_date: # if root website has date
+                if not contains_date(final_href):  # if root website has date, add URL iff final_href doesnt
+                    links.append(final_href)
+
+
     return links
 
 
@@ -104,3 +114,8 @@ def is_valid(url):
     except TypeError:
         print ("TypeError for ", parsed)
         raise
+
+
+def contains_date(url):
+    pattern = r'(?:19|20)\d{2}.?(?:0?[1-9]|1[0-2]).?(?:0?[1-9]|[12]\d|3[01])'
+    return bool(re.search(pattern, url))

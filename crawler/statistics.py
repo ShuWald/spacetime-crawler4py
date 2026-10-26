@@ -144,6 +144,8 @@ class Statistics:
         if not os.path.exists(savefile):
             self._logger.info("Statistics file doesn't exist yet.")
             return
+        print(f"Loading stats from: {os.path.abspath(savefile)}")
+        print(f"File size: {os.path.getsize(savefile)} bytes")
         with open(savefile, "rb") as f:
             stats = pickle.load(f)
     

@@ -69,6 +69,7 @@ class Worker(Thread):
                     # This is duplicate logic for checking redirects outside robots.txt
                     # Its ugly but I'd rather not break up the scraped_result object and pass it down
                     # And the recommendation was to keep all error/validation logic in scraper to allow unit testing
+                    redirect_robots_allowed = False
                     if is_valid(resp.url):
                         redirect_robots_allowed = True
                         destination = urlparse(resp.url)
@@ -77,7 +78,7 @@ class Worker(Thread):
                         if not self.robots_cache[destination.netloc].can_crawl(resp.url):
                             redirect_robots_allowed = False
 
-                    scraped_result = scraper(tbd_url, resp, self.statistics, redirect_robots_allowed)
+                    scraped_result = scraper(tbd_url, resp, self.statistics, redirect_robots_allowed, self.logger)
                     links = scraped_result.get("urls", [])
                     for link in links:
                         self.frontier.add_url(link)

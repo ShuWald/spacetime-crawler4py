@@ -12,7 +12,7 @@ import time
 
 class Frontier(object):
 
-    IGNORED_QUERIES = {"year", "month", "version", "day", "share", "date"}
+   
 
     def __init__(self, config, restart):
         self.logger = get_logger("FRONTIER")
@@ -162,9 +162,15 @@ class Frontier(object):
         '''Removes queries from frontier.IGNORED_QUERIES, and orders the queries in alphabetical order'''
         parts = urlparse(url)
 
-        queries = [(key, value) for key, value in parse_qsl(parts.query, keep_blank_values=True) if key.lower() not in self.IGNORED_QUERIES]
+        IGNORED_QUERIES = {"year", "month", "version", "day", "share", "date"}
+
+        if (parts.netloc.lower() == "grape.ics.uci.edu" and parts.path.rstrip("/") == "/wiki/public/timeline"):
+            IGNORED_QUERIES.add("from")
+        
+        queries = [(key, value) for key, value in parse_qsl(parts.query, keep_blank_values=True) if key.lower() not in IGNORED_QUERIES]
 
         queries.sort(key=lambda item: item[0])
+
 
         return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(queries),parts.fragment))
         
