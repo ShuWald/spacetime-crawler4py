@@ -49,6 +49,8 @@ class Crawler(object):
         print(f"There are {len(subdomains)} ics.uci.edu subdomains:")
         for d, c in subdomains:
             print(f"{d}, {c}")
+        save_count, save_time = s["save_count_time"]
+        print(f"Spent {save_time}s saving Statistics files {save_count} times.")
         print("----- End Crawl Report -----")
 
     def join(self):

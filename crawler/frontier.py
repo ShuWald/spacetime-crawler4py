@@ -12,15 +12,17 @@ import time
 
 class Frontier(object):
 
-   
+
 
     def __init__(self, config, restart):
+        self.lock = RLock()
+
         self.logger = get_logger("FRONTIER")
         self.config = config
-        self.to_be_downloaded = {} # stores domain : list[url] 
+        self.to_be_downloaded = {} # stores domain : list[url]
         self.in_use = {}           # stores domain : list[url]
         self.timestamps = {}        # stores domain : date
-        
+
         if not os.path.exists(self.config.save_file) and not restart:
             # Save file does not exist, but request to load save.
             self.logger.info(
@@ -46,117 +48,121 @@ class Frontier(object):
 
     def _parse_save_file(self):
         ''' This function can be overridden for alternate saving techniques. '''
-        print("_parse save file")
+        with self.lock:
+            print("_parse save file")
 
-        total_count = len(self.save)
-        tbd_count = 0
-        for url, completed in self.save.values():
-            if not completed and is_valid(url):
-                domain = urlparse(url).netloc;
+            total_count = len(self.save)
+            tbd_count = 0
+            for url, completed in self.save.values():
+                if not completed and is_valid(url):
+                    domain = urlparse(url).netloc;
 
-                if domain in self.to_be_downloaded: # saved one before
-                    self.to_be_downloaded[domain].append(url)
-                else: # fresh domain
-                    self.to_be_downloaded[domain] = [url]
+                    if domain in self.to_be_downloaded: # saved one before
+                        self.to_be_downloaded[domain].append(url)
+                    else: # fresh domain
+                        self.to_be_downloaded[domain] = [url]
 
-                self.timestamps[domain] = None
+                    self.timestamps[domain] = None
 
-                tbd_count += 1
+                    tbd_count += 1
 
-        self.logger.info(
-            f"Found {tbd_count} urls to be downloaded from {total_count} "
-            f"total urls discovered.")
+            self.logger.info(
+                f"Found {tbd_count} urls to be downloaded from {total_count} "
+                f"total urls discovered.")
 
     def get_tbd_url(self):
-        try:
-            # check datetime, return first instance with long enough or first instance of a None stored time
-            mintime = None
-            minkey = None
-            now = time.time()
-            
-            for key in list(self.timestamps):
-                key_in_use = key in self.in_use
+        with self.lock:
+            try:
+                # check datetime, return first instance with long enough or first instance of a None stored time
+                mintime = None
+                minkey = None
+                now = time.time()
 
-                #if (self.timestamps[key] == None or (now - self.timestamps[key] >= 0.5)) and not key_in_use: # i.e valid key found
-                    # do things
-                    #self.in_use[key] = self.to_be_downloaded[key] # store the key and list of urls
-                    #self.to_be_downloaded.pop(key, None)          # remove key value pair from dicctionary so we literally cant come across it, and slightly faster traversal
-                    #return (self.in_use[key].pop(), self.timestamps[key], False)            # return frontmost url in domain url list
+                for key in list(self.timestamps):
+                    key_in_use = key in self.in_use
 
-                # check if domain that are not in use and if it still has no URLs to be downloaded
-                if not key_in_use and len(self.to_be_downloaded[key]) != 0: # key domain not in use
-                    if self.timestamps[key] is None:
-                        minkey = key
-                        break
-                    elif (mintime == None) or self.timestamps[key] < mintime: # found older access or no time stored
-                        mintime = self.timestamps[key]
-                        minkey = key
-                else: # domain in use
-                    pass
+                    #if (self.timestamps[key] == None or (now - self.timestamps[key] >= 0.5)) and not key_in_use: # i.e valid key found
+                        # do things
+                        #self.in_use[key] = self.to_be_downloaded[key] # store the key and list of urls
+                        #self.to_be_downloaded.pop(key, None)          # remove key value pair from dicctionary so we literally cant come across it, and slightly faster traversal
+                        #return (self.in_use[key].pop(), self.timestamps[key], False)            # return frontmost url in domain url list
 
-            if minkey is None:
-                return (None, None, None) # no valid domain found
-            
-            # if we get to this point, then we havent found valid domain within time (aka for all times in timestamps, now - timestamp <= 0.5), so wait and try again
+                    # check if domain that are not in use and if it still has no URLs to be downloaded
+                    if not key_in_use and len(self.to_be_downloaded[key]) != 0: # key domain not in use
+                        if self.timestamps[key] is None:
+                            minkey = key
+                            break
+                        elif (mintime == None) or self.timestamps[key] < mintime: # found older access or no time stored
+                            mintime = self.timestamps[key]
+                            minkey = key
+                    else: # domain in use
+                        pass
 
-            self.in_use[minkey] = self.to_be_downloaded[minkey]
-            self.to_be_downloaded.pop(minkey, None)
-            # if key at minkey cant be accessed, i.e to_be_downloaded is empty, will throw value error, in which case we return None
-            return (self.in_use[minkey].pop(), self.timestamps[minkey], True)
-        
-        
-        
-        except IndexError:
-            return (None, None, None)
-        except Exception as e:
-            self.logger.info(f"Exception occurred while fetching URL from frontier: {e}")
-            return (None, None, None)
+                if minkey is None:
+                    return (None, None, None) # no valid domain found
+
+                # if we get to this point, then we havent found valid domain within time (aka for all times in timestamps, now - timestamp <= 0.5), so wait and try again
+
+                self.in_use[minkey] = self.to_be_downloaded[minkey]
+                self.to_be_downloaded.pop(minkey, None)
+                # if key at minkey cant be accessed, i.e to_be_downloaded is empty, will throw value error, in which case we return None
+                return (self.in_use[minkey].pop(), self.timestamps[minkey], True)
+
+
+
+            except IndexError:
+                return (None, None, None)
+            except Exception as e:
+                self.logger.info(f"Exception occurred while fetching URL from frontier: {e}")
+                return (None, None, None)
 
     def add_url(self, url):
-        url = normalize(url)
-        check_url = self._query_normalization(url) # organize queries
-        urlhash = get_urlhash(check_url)
+        with self.lock:
+            url = normalize(url)
+            check_url = self._query_normalization(url) # organize queries
+            urlhash = get_urlhash(check_url)
 
 
-        if urlhash not in self.save: # check if the query_organized_hash has been saved
-            self.save[urlhash] = (url, False) # save the query_organized_hash
-            self.save.sync()
+            if urlhash not in self.save: # check if the query_organized_hash has been saved
+                self.save[urlhash] = (url, False) # save the query_organized_hash
+                self.save.sync()
+
+                domain = urlparse(url).netloc
+
+                if domain in self.to_be_downloaded: # domain exists in to_be_downloaded
+                    self.to_be_downloaded[domain].append(url)
+                elif domain in self.in_use:      # domain exists in in_use
+                    self.in_use[domain].append(url)
+                else:                               # domain never accessed
+                    self.to_be_downloaded[domain] = [url]
+                    self.timestamps[domain] = None          # save timestamp as never accessed domain since weve never seen it
+
+
+
+    def mark_url_complete(self, url):
+        with self.lock:
+            url = self._query_normalization(url) # organize queries
+            urlhash = get_urlhash(url)
 
             domain = urlparse(url).netloc
 
-            if domain in self.to_be_downloaded: # domain exists in to_be_downloaded
-                self.to_be_downloaded[domain].append(url)
-            elif domain in self.in_use:      # domain exists in in_use
-                self.in_use[domain].append(url)
-            else:                               # domain never accessed
-                self.to_be_downloaded[domain] = [url]
-                self.timestamps[domain] = None          # save timestamp as never accessed domain since weve never seen it
+            if domain not in self.in_use:
+                self.logger.error(f"Completed url {url} but {domain} was not in use")
+                return
 
-            
-    
-    def mark_url_complete(self, url):
-        url = self._query_normalization(url) # organize queries
-        urlhash = get_urlhash(url)
+            # add back into to_be_downloaded domain
+            self.to_be_downloaded[domain] = self.in_use[domain]
+            # Remove the domain from in_use
+            self.in_use.pop(domain, None)
+            self.timestamps[domain] = time.time()
 
-        domain = urlparse(url).netloc
+            if urlhash not in self.save:
+                # This should not happen.
+                self.logger.error(
+                    f"Completed url {url}, but have not seen it before.")
 
-        if domain not in self.in_use:
-            self.logger.error(f"Completed url {url} but {domain} was not in use")
-            return
-
-        # add back into to_be_downloaded domain
-        self.to_be_downloaded[domain] = self.in_use[domain]
-        # Remove the domain from in_use
-        self.in_use.pop(domain, None)
-        self.timestamps[domain] = time.time()
-
-        if urlhash not in self.save:
-            # This should not happen.
-            self.logger.error(
-                f"Completed url {url}, but have not seen it before.")
-
-        self.save[urlhash] = (self.save[urlhash][0], True)
-        self.save.sync()
+            self.save[urlhash] = (self.save[urlhash][0], True)
+            self.save.sync()
 
     def _query_normalization(self, url):
         '''Removes queries from frontier.IGNORED_QUERIES, and orders the queries in alphabetical order'''
@@ -166,12 +172,10 @@ class Frontier(object):
 
         if (parts.netloc.lower() == "grape.ics.uci.edu" and parts.path.rstrip("/") == "/wiki/public/timeline"):
             IGNORED_QUERIES.add("from")
-        
+
         queries = [(key, value) for key, value in parse_qsl(parts.query, keep_blank_values=True) if key.lower() not in IGNORED_QUERIES]
 
         queries.sort(key=lambda item: item[0])
 
 
         return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(queries),parts.fragment))
-        
-        
