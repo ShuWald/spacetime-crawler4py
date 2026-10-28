@@ -1,5 +1,6 @@
 
 """Statistics is a commutative monoid. It can be kept separate across workers before joining once."""
+import time
 from threading import RLock
 from logging import Logger
 from utils.config import Config
@@ -32,6 +33,9 @@ class Statistics:
         self._config = config
         self._logger = logger
         self.similarity_treshold = 3
+
+        self.save_count = 0
+        self.save_time = 0
 
         if config.stopwords:
             with open(config.stopwords) as f:
@@ -76,7 +80,8 @@ class Statistics:
                 "unique_page_count": unique_pages,
                 "longest_page": self._longest_page,
                 "top_k_words": top_words,
-                "ics_subdomain_pagecounts": domain_counts
+                "ics_subdomain_pagecounts": domain_counts,
+                "save_count_time": (self.save_count, self.save_time)
             }
 
     def ingest(self, url: str, parse: bs4.BeautifulSoup):
@@ -127,6 +132,7 @@ class Statistics:
     # worker will call after a set amount of pages and after crawl
     def save(self, file: str | None = None):
         with self.lock:
+            t1 = time.perf_counter()
             if file is None and self._stats_file is None:
                 if self._logger:
                     self._logger.error("Failed to load Statistics, stats file not provided")
@@ -145,6 +151,10 @@ class Statistics:
 
             with open(savefile, "wb") as f:
                 pickle.dump(stats, f)
+
+            t2 = time.perf_counter()
+            self.save_count += 1
+            self.save_time += (t2 - t1)
 
     # Load stats from the save file.
     def load(self, file=None):
