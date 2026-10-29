@@ -53,7 +53,7 @@ class Crawler(object):
         for d, c in subdomains:
             report += f"{d}, {c}\n"
         save_count, save_time = s["save_count_time"]
-        report += f"Spent {save_time}s saving Statistics files {save_count} times."
+        report += f"Spent {save_time}s saving Statistics files {save_count} times.\n"
         report += "----- End Crawl Report -----\n"
         # Write into regular file
         with open("summary.txt", "w", encoding="utf-8") as file:
