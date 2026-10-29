@@ -85,6 +85,12 @@ class Statistics:
             }
 
     def ingest(self, url: str, parse: bs4.BeautifulSoup):
+        # 10/28/26 lecture: immediate plans for working on ingest function
+        # skip files that have too many replacement characters or non-printable characters
+        # Keep printable ASCII and new lines. handle control characters and     
+        # change tokenizer so it only takes letters and digits 
+        # ban list of junk tokens
+        # track stop word ratio. If outside of normal range -> page is junk
         with self.lock:
             text = parse.get_text("\n", strip=True)
             words: list[str] = self.re_word.findall(text)
