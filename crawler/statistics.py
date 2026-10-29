@@ -99,7 +99,6 @@ class Statistics:
         
         # ban list of junk tokens not done
         
-
         
         with self.lock:
             text = parse.get_text("\n", strip=True)
@@ -108,85 +107,70 @@ class Statistics:
 
             count_ufffd = text.count("\ufffd")
             OGlen = len(text)
-
-            
+            clean_text = ""
 
             count_invalid_ch = 0
-            invalid_ch_threshold = 0.1
+            specialCharCount = 0
+            invalid_ch_threshold = 1.0
 
             for ch in text:
-                # printable ASCII is in the range of decimal 32 to 126
+                # invalid if not printable ASCII (within range of 32 to 126)
                 if ch != "\n" and not (32<= ord(ch) <= 126):
                     count_invalid_ch += 1
+                else:
+                    # Filter out invalids for words later?
+                    clean_text += ch
+                    # find special characters within printable ASCII
+                    if not ch.isalnum() and not ch.isspace():
+                        specialCharCount += 1
 
-            if OGlen > 0: 
-                invalid_ch_proportion = count_invalid_ch/OGlen
-            else:
-                invalid_ch_proportion = 0 
-
-            if invalid_ch_proportion > invalid_ch_threshold:
-                return False
-            
-            cleanTxt = ""
-            for ch in text:
-                if ch == "\n" or (32 <= ord(ch) <= 126):
-                    cleanTxt += ch
-
-            text = cleanTxt
-
-
-            specialCharCount = 0
-
-            for ch in text: 
-                if not ch.isalnum() and not ch.isspace():
-                    specialCharCount+=1
-                
-            if text:
-                specialCharProportion = specialCharCount/len(text)
-
-            else: 
-                specialCharProportion = 0
-
+            # find ufffd, invalid, and special character proportions
             if OGlen > 0:
                 ufffdProportion = count_ufffd / OGlen
+                invalid_ch_proportion = count_invalid_ch/OGlen
+                specialCharProportion = specialCharCount/OGlen
+            # Avoid divide by zero
             else:
+                invalid_ch_proportion = 0
+                specialCharProportion = 0
                 ufffdProportion = 0
-                
-            # not tested yet if this is optimal proportion 
-            # this will not add URL to unique page count
-            if ufffdProportion > 0.1:
+
+            # proportions not tested
+            # check ufffd, invalid, and special character proportions against thresholds
+            if (
+                ufffdProportion > 1.0 
+                or specialCharProportion > 1.0
+                or invalid_ch_proportion > invalid_ch_threshold
+                ):
+                # this will not add URL to unique page count
                 return False
-            #if specialCharProportion > 0.1:
-            #    return False
-            
-            words: list[str] = self.re_word.findall(text)
+
+            # Changed from text to clean_text here to avoid invalid characters, is that correct?
+            words: list[str] = self.re_word.findall(clean_text)
             word_count = len(words)
 
             stopWordsCount = 0
+            totalCharacterCount = 0 
 
             for word in words:
                 if word.lower() in self._stopwords:
                     stopWordsCount += 1 
+                totalCharacterCount += len(word)
             if word_count > 0:
                 stopWordsProportion = stopWordsCount/ word_count
-            else:
-                stopWordsProportion = 0
-
-            # lowerBound = 0.1
-            # upperBound = 0.2
-
-            # if stopWordsProportion < lowerBound or stopWordsProportion > upperBound:
-            #    return False
-
-            totalCharacterCount = 0 
-
-            for word in words:
-                totalCharacterCount += len(word)
-
-            if(word_count > 0):
                 avgCharPerWord = totalCharacterCount/word_count
+            # For divide by zero errors
             else:
-                avgCharPerWord = 0
+                stopWordsProportion, avgCharPerWord = 0, 0
+
+            # Placeholder thresholds
+            stopWordsLower, stopWordsUpper = 0.0, 1.0   # Do we need a stopwords upper bound? (Mark's example)
+            avgCharPerWordLower, avgCharPerWordUpper = 1.0, 25.0
+            if (
+                stopWordsProportion < stopWordsLower or stopWordsProportion > stopWordsUpper
+                or avgCharPerWord < avgCharPerWordLower or avgCharPerWord > avgCharPerWordUpper
+            ):
+                return False
 
             word_frequencies = dict(Counter(w.lower() for w in words))
             page_fingerprint = 0
