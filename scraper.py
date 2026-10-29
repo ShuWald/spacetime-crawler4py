@@ -29,7 +29,7 @@ def scraper(url, resp, statistics, robots_allowed, logger = None):
     # Since an invalid response also results in an empty scraped result
     if resp.status != 200:
         scraped_result["error"] = resp.error
-    # Mark alias if redirected 
+    # Mark alias if redirected
     if url != resp.url:
         scraped_result["alias"] = [url]
         # Reject scraping if the redirected URL is not valid in some way
@@ -54,7 +54,7 @@ def scraper(url, resp, statistics, robots_allowed, logger = None):
         page_is_unique = statistics.ingest(resp.url, parser)
 
         links = extract_next_links(resp, parser, (contains_date(resp.url) or contains_date(url)))
-        
+
         if page_is_unique:
             scraped_result["urls"] = links
         else:
@@ -62,7 +62,7 @@ def scraper(url, resp, statistics, robots_allowed, logger = None):
                 logger.info(f"Ignored links from {url} due to similarity")
             scraped_result["urls"] = []
     return scraped_result
-        
+
 
 def extract_next_links(resp, parser, url_has_date=False):
     links = []
@@ -109,7 +109,11 @@ def is_valid(url):
             + r"|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso"
             + r"|epub|dll|cnf|tgz|sha1"
             + r"|thmx|mso|arff|rtf|jar|csv"
-            + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower())
+            + r"|rm|smil|wmv|swf|wma|zip|rar|gz"
+            + r"|mol|can|sdf|ppsx|war|xml|smi|npy"
+            + r"|tsv|svg|odp|ipynb|class|psp|pps|img|db|cls|apk)$", parsed.path.lower())
+            # Most other languages files are kept, since they're reasonable to search for,
+            # i.e. they have semantically meaningful tokens
 
     except TypeError:
         print ("TypeError for ", parsed)
