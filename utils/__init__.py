@@ -38,7 +38,7 @@ def get_urlhash(url):
     return sha256(hash_input.encode("utf-8")).hexdigest()
 
 # Normalize a URL, lowercases the scheme and netloc, ensures a path, and optionally keeps the query
-def normalize(url, keepQuery=False, keepFragment=False):
+def normalize(url, keepQuery=True, keepFragment=False):
     parts = urlsplit(url)
     scheme = parts.scheme.lower()
     netloc = parts.netloc.lower()

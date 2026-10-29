@@ -1,5 +1,7 @@
 
 """Statistics is a commutative monoid. It can be kept separate across workers before joining once."""
+import time
+from threading import RLock
 from logging import Logger
 from utils.config import Config
 import urllib.parse
@@ -21,6 +23,8 @@ class Statistics:
     object will not be saved.
     """
     def __init__(self, config: Config, restart: bool, logger: Logger, stats_file: str | None = None):
+        self.lock = RLock()
+
         self._word_counts = defaultdict(lambda: 0) # all words, stopworded on query
         self._longest_page: tuple[str, int] = ("", 0) # (url, word count)
         self._urls: set[str] = set()
@@ -29,6 +33,9 @@ class Statistics:
         self._config = config
         self._logger = logger
         self.similarity_treshold = 3
+
+        self.save_count = 0
+        self.save_time = 0
 
         if config.stopwords:
             with open(config.stopwords) as f:
@@ -48,109 +55,127 @@ class Statistics:
 
     """Defaults to stopwords from the config, and empty domain root."""
     def summary(self, *, stop_words: set=None, domain_root: str=""):
-        dot_domain_root = "." + domain_root
-        stop_words = stop_words or self._stopwords
+        with self.lock:
+            dot_domain_root = "." + domain_root
+            stop_words = stop_words or self._stopwords
 
-        domain_pages: dict[str, set[str]] = defaultdict(lambda: set())
-        for url in self._urls:
-            domain = urllib.parse.urlparse(url).netloc
-            if domain == domain_root or domain.endswith(dot_domain_root):
-                domain_pages[domain].add(self._normalize(url))
-        domain_counts = sorted([(d, len(l)) for d, l in domain_pages.items()], key=lambda dl: dl[0])
+            domain_pages: dict[str, set[str]] = defaultdict(lambda: set())
+            for url in self._urls:
+                domain = urllib.parse.urlparse(url).netloc
+                if domain == domain_root or domain.endswith(dot_domain_root):
+                    domain_pages[domain].add(self._normalize(url))
+            domain_counts = sorted([(d, len(l)) for d, l in domain_pages.items()], key=lambda dl: dl[0])
 
-        top_words = sorted([wc for wc in self._word_counts.items() if wc[0] not in stop_words], key=lambda wc: wc[1], reverse=True)
-        top_words = top_words[:50]
-        print(self._urls)
-        unique_pages = len(self._urls)
+            top_words = sorted([wc for wc in self._word_counts.items() if wc[0] not in stop_words], key=lambda wc: wc[1], reverse=True)
+            top_words = top_words[:50]
+            top_words = sorted([(word, count) for word, count in self._word_counts.items() if word not in stop_words and len(word) >= 3
+                                and any(c in "aeiouy" for c in word.lower())],
+                                key=lambda wc: wc[1], reverse=True
+                              )
+            top_words = top_words[:50]
+            #print(self._urls)
+            unique_pages = len(self._urls)
 
-        return {
-            "unique_page_count": unique_pages,
-            "longest_page": self._longest_page,
-            "top_k_words": top_words,
-            "ics_subdomain_pagecounts": domain_counts
-        }
+            return {
+                "unique_page_count": unique_pages,
+                "longest_page": self._longest_page,
+                "top_k_words": top_words,
+                "ics_subdomain_pagecounts": domain_counts,
+                "save_count_time": (self.save_count, self.save_time)
+            }
 
     def ingest(self, url: str, parse: bs4.BeautifulSoup):
-        text = parse.get_text("\n", strip=True)
-        words: list[str] = self.re_word.findall(text)
-        word_count = len(words)
+        with self.lock:
+            text = parse.get_text("\n", strip=True)
+            words: list[str] = self.re_word.findall(text)
+            word_count = len(words)
 
-        word_frequencies = dict(Counter(w.lower() for w in words))
-        page_fingerprint = 0
-        page_fingerprint = self.get_fingerprint(word_frequencies)
-            
+            word_frequencies = dict(Counter(w.lower() for w in words))
+            page_fingerprint = 0
+            page_fingerprint = self.get_fingerprint(word_frequencies)
 
-        has_similar = self.has_similar(page_fingerprint, self.similarity_treshold)
 
-        if not has_similar:
-            self._fingerprints.add(page_fingerprint)
-            for word in words:
-                self._word_counts[word.lower()] += 1
-            if word_count > self._longest_page[1]:
-                self._longest_page = (url, word_count)
-            # expects normalized url input, except for fragments
-            url_norm = self._normalize(url)
-            self._urls.add(url_norm)
+            has_similar = self.has_similar(page_fingerprint, self.similarity_treshold)
 
-        if self._stats_file:
-            self.save() # TODO: save only occasionally (same for frontier)
+            if not has_similar:
+                self._fingerprints.add(page_fingerprint)
+                for word in words:
+                    self._word_counts[word.lower()] += 1
+                if word_count > self._longest_page[1]:
+                    self._longest_page = (url, word_count)
+                # expects normalized url input, except for fragments
+                url_norm = self._normalize(url)
+                self._urls.add(url_norm)
 
-        return not has_similar # most instances will let this drop, but ingest will return False if a given url/page is not unique
+            if self._stats_file:
+                self.save() # TODO: save only occasionally (same for frontier)
+
+            return not has_similar # most instances will let this drop, but ingest will return False if a given url/page is not unique
 
     """Returns an anonymous statistics object with no file to save at."""
     def union(self, other: 'Statistics') -> 'Statistics':
-        s = Statistics(self._config, False, self._logger, stats_file="")
-        for w, c in self._word_counts.items():
-            s._word_counts[w] = c
-        for w, c in other._word_counts.items():
-            s._word_counts[w] += c
-        if self._longest_page[1] > other._longest_page[1]:
-            s._longest_page = self._longest_page
-        else:
-            s._longest_page = other._longest_page
-        s._urls = self._urls.union(other._urls)
-        s._fingerprints = self._fingerprints | other._fingerprints
-        return s
+        with self.lock:
+            s = Statistics(self._config, False, self._logger, stats_file="")
+            for w, c in self._word_counts.items():
+                s._word_counts[w] = c
+            for w, c in other._word_counts.items():
+                s._word_counts[w] += c
+            if self._longest_page[1] > other._longest_page[1]:
+                s._longest_page = self._longest_page
+            else:
+                s._longest_page = other._longest_page
+            s._urls = self._urls.union(other._urls)
+            s._fingerprints = self._fingerprints | other._fingerprints
+            return s
 
     # combine statistics and put into save file
     # worker will call after a set amount of pages and after crawl
     def save(self, file: str | None = None):
-        if file is None and self._stats_file is None:
-            if self._logger:
-                self._logger.error("Failed to load Statistics, stats file not provided")
-            return
+        with self.lock:
+            t1 = time.perf_counter()
+            if file is None and self._stats_file is None:
+                if self._logger:
+                    self._logger.error("Failed to load Statistics, stats file not provided")
+                return
 
-        savefile = file or self._stats_file
+            savefile = file or self._stats_file
 
-        store_word_counts = dict(self._word_counts)
+            store_word_counts = dict(self._word_counts)
 
-        stats = {
-            "_urls": self._urls,
-            "_word_counts": store_word_counts,
-            "_longest_page": self._longest_page,
-            "_fingerprints": self._fingerprints,
-        }
+            stats = {
+                "_urls": self._urls,
+                "_word_counts": store_word_counts,
+                "_longest_page": self._longest_page,
+                "_fingerprints": self._fingerprints,
+            }
 
-        with open(savefile, "wb") as f:
-            pickle.dump(stats, f)
+            with open(savefile, "wb") as f:
+                pickle.dump(stats, f)
+
+            t2 = time.perf_counter()
+            self.save_count += 1
+            self.save_time += (t2 - t1)
 
     # Load stats from the save file.
     def load(self, file=None):
-        if file is None and self._stats_file is None:
-            if self._logger:
-                self._logger.error("Failed to load Statistics, stats file not provided")
-            return
-        savefile = file or self._stats_file
-        if not os.path.exists(savefile):
-            self._logger.info("Statistics file doesn't exist yet.")
-            return
-        with open(savefile, "rb") as f:
-            stats = pickle.load(f)
-    
-        self._urls = stats["_urls"]
-        self._word_counts.update(stats["_word_counts"])
-        self._longest_page = stats["_longest_page"]
-        self._fingerprints = stats["_fingerprints"]
+        with self.lock:
+            if file is None and self._stats_file is None:
+                if self._logger:
+                    self._logger.error("Failed to load Statistics, stats file not provided")
+                return
+            savefile = file or self._stats_file
+            if not os.path.exists(savefile):
+                self._logger.info("Statistics file doesn't exist yet.")
+                return
+            print(f"Loading stats from: {os.path.abspath(savefile)}")
+            print(f"File size: {os.path.getsize(savefile)} bytes")
+            with open(savefile, "rb") as f:
+                stats = pickle.load(f)
+
+            self._urls = stats["_urls"]
+            self._word_counts.update(stats["_word_counts"])
+            self._longest_page = stats["_longest_page"]
+            self._fingerprints = stats["_fingerprints"]
 
 
     def get_hash_int(self, word: str):
@@ -184,4 +209,3 @@ class Statistics:
             if self.compare_fingerprints(f1, f2) <= treshold:
                 return True
         return False
-    

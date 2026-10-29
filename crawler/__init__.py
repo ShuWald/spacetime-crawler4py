@@ -52,6 +52,8 @@ class Crawler(object):
         report += f"There are {len(subdomains)} ics.uci.edu subdomains:\n"
         for d, c in subdomains:
             report += f"{d}, {c}\n"
+        save_count, save_time = s["save_count_time"]
+        report += f"Spent {save_time}s saving Statistics files {save_count} times."
         report += "----- End Crawl Report -----\n"
         # Write into regular file
         with open("summary.txt", "w", encoding="utf-8") as file:
