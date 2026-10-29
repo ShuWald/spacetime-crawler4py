@@ -37,6 +37,7 @@ class Statistics:
         self.save_count = 0
         self.save_time = 0
 
+        self._stopwords = set()
         if config.stopwords:
             with open(config.stopwords) as f:
                 self._stopwords = { w.strip() for w in f.readlines() }
@@ -85,16 +86,107 @@ class Statistics:
             }
 
     def ingest(self, url: str, parse: bs4.BeautifulSoup):
-        # 10/28/26 lecture: immediate plans for working on ingest function
-        # skip files that have too many replacement characters or non-printable characters
-        # Keep printable ASCII and new lines. handle control characters and     
-        # change tokenizer so it only takes letters and digits 
-        # ban list of junk tokens
-        # track stop word ratio. If outside of normal range -> page is junk
+        # Complete:
+        # Reject if ratio of replacement characters to overall characters is above a certain threshold (need to determine)
+        # All rejection thresholds are placeholders
+        # Change control characters (tabs and carriage returns) to spaces 
+        # Enforce printable ASCII. Remove non-printable characters. Keep new lines.
+        # Special character ratio calculation
+        # Avg word length calculation
+        # Stopword ratio calculation
+        # track stop word ratio. If outside of normal range (need to determine -> uncomment rejection condition once completed) -> page is junk
+        # skip files that have too many replacement characters or non-printable characters/ASCII
+        
+        # ban list of junk tokens not done
+        
+
+        
         with self.lock:
             text = parse.get_text("\n", strip=True)
+            text = text.replace("\t", " ")
+            text = text.replace("\r", " ")
+
+            count_ufffd = text.count("\ufffd")
+            OGlen = len(text)
+
+            
+
+            count_invalid_ch = 0
+            invalid_ch_threshold = 0.1
+
+            for ch in text:
+                # printable ASCII is in the range of decimal 32 to 126
+                if ch != "\n" and not (32<= ord(ch) <= 126):
+                    count_invalid_ch += 1
+
+            if OGlen > 0: 
+                invalid_ch_proportion = count_invalid_ch/OGlen
+            else:
+                invalid_ch_proportion = 0 
+
+            if invalid_ch_proportion > invalid_ch_threshold:
+                return False
+            
+            cleanTxt = ""
+            for ch in text:
+                if ch == "\n" or (32 <= ord(ch) <= 126):
+                    cleanTxt += ch
+
+            text = cleanTxt
+
+
+            specialCharCount = 0
+
+            for ch in text: 
+                if not ch.isalnum() and not ch.isspace():
+                    specialCharCount+=1
+                
+            if text:
+                specialCharProportion = specialCharCount/len(text)
+
+            else: 
+                specialCharProportion = 0
+
+            if OGlen > 0:
+                ufffdProportion = count_ufffd / OGlen
+            else:
+                ufffdProportion = 0
+                
+            # not tested yet if this is optimal proportion 
+            # this will not add URL to unique page count
+            if ufffdProportion > 0.1:
+                return False
+            #if specialCharProportion > 0.1:
+            #    return False
+            
             words: list[str] = self.re_word.findall(text)
             word_count = len(words)
+
+            stopWordsCount = 0
+
+            for word in words:
+                if word.lower() in self._stopwords:
+                    stopWordsCount += 1 
+            if word_count > 0:
+                stopWordsProportion = stopWordsCount/ word_count
+            else:
+                stopWordsProportion = 0
+
+            # lowerBound = 0.1
+            # upperBound = 0.2
+
+            # if stopWordsProportion < lowerBound or stopWordsProportion > upperBound:
+            #    return False
+
+            totalCharacterCount = 0 
+
+            for word in words:
+                totalCharacterCount += len(word)
+
+            if(word_count > 0):
+                avgCharPerWord = totalCharacterCount/word_count
+            else:
+                avgCharPerWord = 0
 
             word_frequencies = dict(Counter(w.lower() for w in words))
             page_fingerprint = 0
