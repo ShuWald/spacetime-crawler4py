@@ -3,6 +3,8 @@ from utils import get_logger
 from crawler.frontier import Frontier
 from crawler.worker import Worker
 import os
+import time
+import shelve
 
 class Crawler(object):
     def __init__(self, config, restart, frontier_factory=Frontier, worker_factory=Worker):
@@ -38,18 +40,22 @@ class Crawler(object):
 
     def printSummary(self):
         s = self.statistics.summary(domain_root="ics.uci.edu")
-        print("----- Begin Crawl Report -----")
-        print(f"We found {s['unique_page_count']} unique pages.")
+        report, report_time = "", time.time()
+        report += f"----- Begin Crawl Report: {report_time} -----\n"
+        report += f"We found {s['unique_page_count']} unique pages.\n"
         page, size = s["longest_page"]
-        print(f"The longest page is {page} with {size} words.")
-        print("The top few words are:")
+        report += f"The longest page is {page} with {size} words.\n"
+        report += "The top few words are:\n"
         for w, c in s["top_k_words"]:
-            print(f"{w}, {c}")
+            report += f"{w}, {c}\n"
         subdomains = s["ics_subdomain_pagecounts"]
-        print(f"There are {len(subdomains)} ics.uci.edu subdomains:")
+        report += f"There are {len(subdomains)} ics.uci.edu subdomains:\n"
         for d, c in subdomains:
-            print(f"{d}, {c}")
-        print("----- End Crawl Report -----")
+            report += f"{d}, {c}\n"
+        report += "----- End Crawl Report -----\n"
+        # Write into regular file
+        with open("summary.txt", "w", encoding="utf-8") as file:
+            file.write(report)
 
     def join(self):
         for worker in self.workers:
