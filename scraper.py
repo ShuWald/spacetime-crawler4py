@@ -110,7 +110,7 @@ def is_valid(url):
             + r"|epub|dll|cnf|tgz|sha1"
             + r"|thmx|mso|arff|rtf|jar|csv"
             + r"|rm|smil|wmv|swf|wma|zip|rar|gz"
-            + r"|mol|can|sdf|ppsx|war|xml|smi|npy"
+            + r"|mpg|mol|can|sdf|ppsx|war|xml|smi|npy"
             + r"|tsv|svg|odp|ipynb|class|psp|pps|img|db|cls|apk)$", parsed.path.lower())
             # Most other languages files are kept, since they're reasonable to search for,
             # i.e. they have semantically meaningful tokens
