@@ -95,7 +95,7 @@ class Statistics:
             text = text.replace("\t", " ")
             text = text.replace("\r", " ")
 
-            OGlen = len(text)
+            og_len = len(text)
             clean_text = ""
             keys = ["ufffd", "invalid", "special", "stop words", "average word length"]
             counts = {k: 0 for k in keys}   # note that average word length count just stores total length of all words
@@ -120,7 +120,7 @@ class Statistics:
                         counts["special"] += 1
 
             for key in keys[:3]:
-                proportions[key] = counts[key] / OGlen if OGlen > 0 else 0
+                proportions[key] = counts[key] / og_len if og_len > 0 else 0
                 self._logger.debug(f"URL: {url}, {key} prop: {proportions[key]}, ")
             #\#--
 
@@ -155,7 +155,7 @@ class Statistics:
             page_fingerprint = self.get_fingerprint(word_frequencies)
             # This url's stats
             url_stats = {
-                "character_count": OGlen,
+                "character_count": og_len,
                 "valid_character_count": len(clean_text),
                 "word_count": word_count,
                 "counts": counts,
@@ -194,7 +194,7 @@ class Statistics:
             else:
                 s._longest_page = other._longest_page
             s._urls = self._urls.union(other._urls)
-            s._urls_stats = {**self._url_stats, **other._url_stats}
+            s._url_stats = {**self._url_stats, **other._url_stats}
             s._fingerprints = self._fingerprints | other._fingerprints
             return s
 
