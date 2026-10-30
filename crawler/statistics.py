@@ -28,6 +28,7 @@ class Statistics:
         self._word_counts = defaultdict(lambda: 0) # all words, stopworded on query
         self._longest_page: tuple[str, int] = ("", 0) # (url, word count)
         self._urls: set[str] = set()
+        self._url_stats: dict[str, dict] = dict() # url -> {character_count, valid_character_count, word_count, counts, proportions}
         self._fingerprints = set()
 
         self._config = config
@@ -37,6 +38,7 @@ class Statistics:
         self.save_count = 0
         self.save_time = 0
 
+        self._stopwords = set()
         if config.stopwords:
             with open(config.stopwords) as f:
                 self._stopwords = { w.strip() for w in f.readlines() }
@@ -73,7 +75,6 @@ class Statistics:
                                 key=lambda wc: wc[1], reverse=True
                               )
             top_words = top_words[:50]
-            #print(self._urls)
             unique_pages = len(self._urls)
 
             return {
@@ -85,15 +86,82 @@ class Statistics:
             }
 
     def ingest(self, url: str, parse: bs4.BeautifulSoup):
+        
+        # ban list of junk tokens not done
+        
+        
         with self.lock:
             text = parse.get_text("\n", strip=True)
-            words: list[str] = self.re_word.findall(text)
+            text = text.replace("\t", " ")
+            text = text.replace("\r", " ")
+
+            og_len = len(text)
+            clean_text = ""
+            keys = ["ufffd", "invalid", "special", "stop words", "average word length"]
+            counts = {k: 0 for k in keys}   # note that average word length count just stores total length of all words
+            proportions = {k: 0 for k in keys}
+            
+            # note that average word upper bound is implemented manually (alternatives possible)
+            thresholds_nums = [0.05, 0.1, 0.5, 0.1, 3.0]
+            average_word_length_upper = 25.0
+            thresholds = {k: v for k, v in zip(keys, thresholds_nums)}
+
+            #\#-- ufffd, invalid, and special counts and proportions
+            counts["ufffd"] = text.count("\ufffd")
+            for ch in text:
+                # invalid if not printable ASCII (within range of 32 to 126)
+                if ch != "\n" and not (32<= ord(ch) <= 126):
+                    counts["invalid"] += 1
+                else:
+                    # Filter out invalids for words later?
+                    clean_text += ch
+                    # find special characters within printable ASCII
+                    if not ch.isalnum() and not ch.isspace():
+                        counts["special"] += 1
+
+            for key in keys[:3]:
+                proportions[key] = counts[key] / og_len if og_len > 0 else 0
+                self._logger.debug(f"URL: {url}, {key} prop: {proportions[key]}, ")
+            #\#--
+
+            #/#-- stop words and average word length counts and proportions
+            words: list[str] = self.re_word.findall(clean_text)
             word_count = len(words)
+
+            for word in words:
+                if word.lower() in self._stopwords:
+                    counts["stop words"] += 1 
+                counts["average word length"] += len(word)
+
+            for key in keys[3:]:
+                proportions[key] = counts[key] / word_count if word_count > 0 else 0
+                self._logger.debug(f"URL: {url}, {key} prop: {proportions[key]}, ")
+            #/#--
+
+            ##--/ log and check thresholds, if any threshold exceeded, reject page
+            for key, value in proportions.items():
+                if proportions[key] > thresholds[key]:
+                    self._logger.info(f"{url} rejected due to {key} {"character " if key in keys[:3] else ""}proportion: {value} exceeded threshold {thresholds[key]}")
+                    return False
+
+            # Manually check average word length upper threshold, alternative solutions possible
+            if (proportions["average word length"] > average_word_length_upper):
+                self._logger.info(f"{url} rejected due to average word length {proportions['average word length']} above max threshold {average_word_length_upper}")
+                return False
+            ##--/ 
 
             word_frequencies = dict(Counter(w.lower() for w in words))
             page_fingerprint = 0
             page_fingerprint = self.get_fingerprint(word_frequencies)
-
+            # This url's stats
+            url_stats = {
+                "character_count": og_len,
+                "valid_character_count": len(clean_text),
+                "word_count": word_count,
+                "counts": counts,
+                # Proportions can already be calculated from information above...
+                "proportions": proportions
+            }
 
             has_similar = self.has_similar(page_fingerprint, self.similarity_treshold)
 
@@ -106,6 +174,7 @@ class Statistics:
                 # expects normalized url input, except for fragments
                 url_norm = self._normalize(url)
                 self._urls.add(url_norm)
+                self._url_stats[url] = url_stats
 
             if self._stats_file:
                 self.save() # TODO: save only occasionally (same for frontier)
@@ -125,6 +194,7 @@ class Statistics:
             else:
                 s._longest_page = other._longest_page
             s._urls = self._urls.union(other._urls)
+            s._url_stats = {**self._url_stats, **other._url_stats}
             s._fingerprints = self._fingerprints | other._fingerprints
             return s
 
@@ -144,6 +214,7 @@ class Statistics:
 
             stats = {
                 "_urls": self._urls,
+                "_url_stats": self._url_stats,
                 "_word_counts": store_word_counts,
                 "_longest_page": self._longest_page,
                 "_fingerprints": self._fingerprints,
@@ -173,6 +244,7 @@ class Statistics:
                 stats = pickle.load(f)
 
             self._urls = stats["_urls"]
+            self._url_stats = stats["_url_stats"]
             self._word_counts.update(stats["_word_counts"])
             self._longest_page = stats["_longest_page"]
             self._fingerprints = stats["_fingerprints"]
