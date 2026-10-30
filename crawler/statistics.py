@@ -25,7 +25,7 @@ class Statistics:
     def __init__(self, config: Config, restart: bool, logger: Logger, stats_file: str | None = None):
         self.lock = RLock()
 
-        self._word_counts = defaultdict(lambda: 0) # all words, stopworded on query
+        self._word_counts = Counter() # all words, stopworded on query
         self._longest_page: tuple[str, int] = ("", 0) # (url, word count)
         self._urls: set[str] = set()
         self._url_stats: dict[str, dict] = dict() # url -> {character_count, valid_character_count, word_count, counts, proportions}
@@ -37,6 +37,8 @@ class Statistics:
 
         self.save_count = 0
         self.save_time = 0
+        self.ingest_count = 0
+        self.ingest_time = 0.0
 
         self._stopwords = set()
         if config.stopwords:
@@ -68,8 +70,6 @@ class Statistics:
                     domain_pages[domain].add(self._normalize(url))
             domain_counts = sorted([(d, len(l)) for d, l in domain_pages.items()], key=lambda dl: dl[0])
 
-            top_words = sorted([wc for wc in self._word_counts.items() if wc[0] not in stop_words], key=lambda wc: wc[1], reverse=True)
-            top_words = top_words[:50]
             top_words = sorted([(word, count) for word, count in self._word_counts.items() if word not in stop_words and len(word) >= 3
                                 and any(c in "aeiouy" for c in word.lower())],
                                 key=lambda wc: wc[1], reverse=True
@@ -82,119 +82,108 @@ class Statistics:
                 "longest_page": self._longest_page,
                 "top_k_words": top_words,
                 "ics_subdomain_pagecounts": domain_counts,
-                "save_count_time": (self.save_count, self.save_time)
+                "save_count_time": (self.save_count, self.save_time),
+                "ingest_count_time": (self.ingest_count, self.ingest_time)
             }
 
     def ingest(self, url: str, parse: bs4.BeautifulSoup):
         # ban list of junk tokens not done
         try:
             with self.lock:
+                t1 = time.perf_counter()
+
                 text = parse.get_text("\n", strip=True)
                 text = text.replace("\t", " ")
                 text = text.replace("\r", " ")
 
-                og_len = len(text)
-                clean_text = ""
-                text_error = False
-                keys = ["ufffd", "invalid", "special", "stop words", "average word length"]
-                counts = {k: 0 for k in keys}   # note that average word length count just stores total length of all words
-                proportions = {k: 0 for k in keys}
-                
-                # note that average word upper bound is implemented manually (alternatives possible)
-                thresholds_nums = [0.05, 0.1, 0.5, 0.1, 3.0]
-                average_word_length_upper = 25.0
-                thresholds = {k: v for k, v in zip(keys, thresholds_nums)}
+                count_chars_ufffd = 0
+                count_chars_nonprintable = 0
+                count_chars_special = 0
+                count_stop_words = 0
+                count_words_length = 0
 
-                #\#-- ufffd, invalid, and special counts and proportions
-                try:
-                    counts["ufffd"] = text.count("\ufffd")
-                    for ch in text:
-                        # invalid if not printable ASCII (within range of 32 to 126)
-                        if ch != "\n" and not (32<= ord(ch) <= 126):
-                            counts["invalid"] += 1
-                        else:
-                            # Filter out invalids for words later?
-                            clean_text += ch
-                            # find special characters within printable ASCII
-                            if not ch.isalnum() and not ch.isspace():
-                                counts["special"] += 1
+                count_chars_ufffd = text.count("\ufffd")
+                for ch in text:
+                    if ch != "\n" and not (32 <= ord(ch) <= 126):
+                        count_chars_nonprintable += 1
+                    elif not (ch.isalnum() or ch.isspace()):
+                        count_chars_special += 1
 
-                    for key in keys[:3]:
-                        proportions[key] = counts[key] / og_len if og_len > 0 else 0
-                        self._logger.debug(f"URL: {url}, {key} prop: {proportions[key]}, ")
-                except Exception as e:
-                    self._logger.error(f"Error (ufffd, invalid, special) for {url}: {e}")
-                    text_error = True
-                #\#--
+                count_chars = len(text)
 
-                #/#-- stop words and average word length counts and proportions
-                words: list[str] = self.re_word.findall(clean_text if not text_error else text)
-                word_count = len(words)
-                try:
-                    for word in words:
-                        if word.lower() in self._stopwords:
-                            counts["stop words"] += 1 
-                        counts["average word length"] += len(word)
+                words: list[str] = self.re_word.findall(text)
+                count_words = len(words)
 
-                    for key in keys[3:]:
-                        proportions[key] = counts[key] / word_count if word_count > 0 else 0
-                        self._logger.debug(f"URL: {url}, {key} prop: {proportions[key]}, ")
-                except Exception as e:
-                    self._logger.error(f"Error (stop words, average word length) for {url}: {e}")
-                    text_error = True
-                #/#--
+                for word in words:
+                    if word.lower() in self._stopwords:
+                        count_stop_words += 1
+                    count_words_length += len(word)
 
-                ##--/ log and check thresholds, if any threshold exceeded, reject page
-                try:
-                    for key, value in proportions.items():
-                        if proportions[key] > thresholds[key]:
-                            self._logger.info(f"{url} rejected due to {key} {"character " if key in keys[:3] else ""}proportion: {value} exceeded threshold {thresholds[key]}")
-                            return False
+                rate_chars_ufffd = count_chars_ufffd / count_chars if count_chars else 0
+                rate_chars_nonprintable = count_chars_nonprintable / count_chars if count_chars else 0
+                rate_chars_special = count_chars_special / count_chars if count_chars else 0
+                rate_stop_words = count_stop_words / count_words if count_chars else 0
+                rate_words_length = count_words_length / count_words if count_chars else 0
 
-                    # Manually check average word length upper threshold, alternative solutions possible
-                    if (proportions["average word length"] > average_word_length_upper):
-                        self._logger.info(f"{url} rejected due to average word length {proportions['average word length']} above max threshold {average_word_length_upper}")
-                        return False
-                except Exception as e:
-                    self._logger.error(f"Error checking thresholds for {url}: {e}")
-                ##--/ 
+                self._logger.debug(f"Page Characteristics of {url} | {count_words} words, {count_chars} characters | {rate_chars_ufffd} ufffd rate, {rate_chars_nonprintable} nonprintable rate, {rate_chars_special} special character rate, {rate_stop_words} stopwords rate, {rate_words_length} word length")
 
-                word_frequencies = dict(Counter(w.lower() for w in words))
-                page_fingerprint = 0
-                page_fingerprint = self.get_fingerprint(word_frequencies)
+                okay = False
+                if rate_chars_ufffd > 0.05: self._logger.debug(f"Reject URL {url}: ufffd rate {rate_chars_ufffd} > 0.05")
+                elif rate_chars_nonprintable > 0.1: self._logger.debug(f"Reject URL {url}: nonprintable rate {rate_chars_nonprintable} > 0.1")
+                elif rate_chars_special > 0.5: self._logger.debug(f"Reject URL {url}: special rate {rate_chars_special} > 0.5")
+                elif rate_stop_words < 0.1: self._logger.debug(f"Reject URL {url}: stopwords rate {rate_stop_words} < 0.1")
+                elif rate_words_length < 3.0: self._logger.debug(f"Reject URL {url}: word length {rate_words_length} < 3.0")
+                elif rate_words_length > 25.0: self._logger.debug(f"Reject URL {url}: word length {rate_words_length} > 25.0")
+                else:
+                    okay = True
+
+                word_counts = Counter(w.lower() for w in words)
                 # This url's stats
                 url_stats = {
-                    "character_count": og_len,
-                    "valid_character_count": len(clean_text),
-                    "word_count": word_count
+                    "count_words": count_words,
+                    "count_chars": count_chars,
+
+                    "count_chars_ufffd": count_chars_ufffd,
+                    "count_chars_nonprintable": count_chars_nonprintable,
+                    "count_chars_special": count_chars_special,
+                    "count_stop_words": count_stop_words,
+                    "count_words_length": count_words_length,
                 }
-                try:
-                    url_stats["counts"] = counts
-                    # Proportions can already be calculated from information above...
-                    url_stats["proportions"] = proportions
-                except:
-                    self._logger.error(f"Can't add counts and proportions for {url}")
 
-                has_similar = self.has_similar(page_fingerprint, self.similarity_treshold)
-
-                if not has_similar:
-                    self._fingerprints.add(page_fingerprint)
-                    for word in words:
-                        self._word_counts[word.lower()] += 1
-                    if word_count > self._longest_page[1]:
-                        self._longest_page = (url, word_count)
-                    # expects normalized url input, except for fragments
-                    url_norm = self._normalize(url)
-                    self._urls.add(url_norm)
+                result = "extract"
+                if not okay:
                     self._url_stats[url] = url_stats
+                    # TODO: return invalidity vs duplicate vs unique (3 cases)
+                    # ingest returns not True => page not unique => don't extract links
+                    result = "invalid"
+                else:
+                    page_fingerprint = self.get_fingerprint(word_counts)
+                    has_similar = self.has_similar(page_fingerprint, self.similarity_treshold)
+
+                    if not has_similar:
+                        self._word_counts += word_counts
+                        self._fingerprints.add(page_fingerprint)
+                        if count_words > self._longest_page[1]:
+                            self._longest_page = (url, count_words)
+                        # expects normalized url input, except for fragments
+                        url_norm = self._normalize(url)
+                        self._urls.add(url_norm)
+                        self._url_stats[url] = url_stats
+                        result = "extract"
+                    else:
+                        result = "duplicate"
+
+                t2 = time.perf_counter()
+                self.ingest_count += 1
+                self.ingest_time += (t2 - t1)
 
                 if self._stats_file:
                     self.save() # TODO: save only occasionally (same for frontier)
 
-                return not has_similar # most instances will let this drop, but ingest will return False if a given url/page is not unique
+                return result # most instances will let this drop, but ingest will return False if a given url/page is not unique
         except Exception as e:
             self._logger.error(f"Unforseen error ingesting {url}: {e}")
-            return True # If the recent statistics ingestion causes major errors at least read all url rather than rejecting everything
+            return "extract" # If the recent statistics ingestion causes major errors at least read all url rather than rejecting everything
 
     """Returns an anonymous statistics object with no file to save at."""
     def union(self, other: 'Statistics') -> 'Statistics':
