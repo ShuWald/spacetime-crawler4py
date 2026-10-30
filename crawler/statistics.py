@@ -28,6 +28,7 @@ class Statistics:
         self._word_counts = defaultdict(lambda: 0) # all words, stopworded on query
         self._longest_page: tuple[str, int] = ("", 0) # (url, word count)
         self._urls: set[str] = set()
+        self._url_stats: dict[str, dict] = dict() # url -> {character_count, valid_character_count, word_count, counts, proportions}
         self._fingerprints = set()
 
         self._config = config
@@ -74,7 +75,6 @@ class Statistics:
                                 key=lambda wc: wc[1], reverse=True
                               )
             top_words = top_words[:50]
-            #print(self._urls)
             unique_pages = len(self._urls)
 
             return {
@@ -150,11 +150,18 @@ class Statistics:
                 return False
             ##--/ 
 
-
             word_frequencies = dict(Counter(w.lower() for w in words))
             page_fingerprint = 0
             page_fingerprint = self.get_fingerprint(word_frequencies)
-
+            # This url's stats
+            url_stats = {
+                "character_count": OGlen,
+                "valid_character_count": len(clean_text),
+                "word_count": word_count,
+                "counts": counts,
+                # Proportions can already be calculated from information above...
+                "proportions": proportions
+            }
 
             has_similar = self.has_similar(page_fingerprint, self.similarity_treshold)
 
@@ -167,6 +174,7 @@ class Statistics:
                 # expects normalized url input, except for fragments
                 url_norm = self._normalize(url)
                 self._urls.add(url_norm)
+                self._url_stats[url] = url_stats
 
             if self._stats_file:
                 self.save() # TODO: save only occasionally (same for frontier)
@@ -186,6 +194,7 @@ class Statistics:
             else:
                 s._longest_page = other._longest_page
             s._urls = self._urls.union(other._urls)
+            s._urls_stats = {**self._url_stats, **other._url_stats}
             s._fingerprints = self._fingerprints | other._fingerprints
             return s
 
@@ -205,6 +214,7 @@ class Statistics:
 
             stats = {
                 "_urls": self._urls,
+                "_url_stats": self._url_stats,
                 "_word_counts": store_word_counts,
                 "_longest_page": self._longest_page,
                 "_fingerprints": self._fingerprints,
@@ -234,6 +244,7 @@ class Statistics:
                 stats = pickle.load(f)
 
             self._urls = stats["_urls"]
+            self._url_stats = stats["_url_stats"]
             self._word_counts.update(stats["_word_counts"])
             self._longest_page = stats["_longest_page"]
             self._fingerprints = stats["_fingerprints"]
