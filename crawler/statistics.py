@@ -147,9 +147,16 @@ class Statistics:
                 ##--/ log and check thresholds, if any threshold exceeded, reject page
                 try:
                     for key, value in proportions.items():
-                        if proportions[key] > thresholds[key]:
-                            self._logger.info(f"{url} rejected due to {key} {"character " if key in keys[:3] else ""}proportion: {value} exceeded threshold {thresholds[key]}")
-                            return False
+                        if key in keys[:3]:
+                            # invalid, special, or ufffd were greater than the upper thresholds
+                            if proportions[key] > thresholds[key]:
+                                self._logger.info(f"{url} rejected due to {key} character proportion: {value} exceeded threshold {thresholds[key]}")
+                                return False
+                        else:
+                            # stop words or average word length were less than the lower thresholds
+                            if proportions[key] < thresholds[key]:
+                                self._logger.info(f"{url} rejected due to {key} proportion: {value} exceeded threshold {thresholds[key]}")
+                                return False
 
                     # Manually check average word length upper threshold, alternative solutions possible
                     if (proportions["average word length"] > average_word_length_upper):
