@@ -125,7 +125,7 @@ class Statistics:
                 rate_stop_words = count_stop_words / count_words
                 rate_words_length = count_words_length / count_words
 
-                self._logger.debug(f"Page Characteristics of {url} | {rate_chars_ufffd} ufffd rate, {rate_chars_nonprintable} nonprintable rate, {rate_chars_special} special character rate, {rate_stop_words} stopwords rate, {rate_words_length} word length")
+                self._logger.debug(f"Page Characteristics of {url} | {count_words} words, {count_chars} characters | {rate_chars_ufffd} ufffd rate, {rate_chars_nonprintable} nonprintable rate, {rate_chars_special} special character rate, {rate_stop_words} stopwords rate, {rate_words_length} word length")
 
                 okay = False
                 if rate_chars_ufffd > 0.05: self._logger.debug(f"Reject URL {url}: ufffd rate {rate_chars_ufffd} > 0.05")
