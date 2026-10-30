@@ -39,25 +39,28 @@ class Crawler(object):
             self.printSummary()
 
     def printSummary(self):
-        s = self.statistics.summary(domain_root="ics.uci.edu")
-        report, report_time = "", time.time()
-        report += f"----- Begin Crawl Report: {report_time} -----\n"
-        report += f"We found {s['unique_page_count']} unique pages.\n"
-        page, size = s["longest_page"]
-        report += f"The longest page is {page} with {size} words.\n"
-        report += "The top few words are:\n"
-        for w, c in s["top_k_words"]:
-            report += f"{w}, {c}\n"
-        subdomains = s["ics_subdomain_pagecounts"]
-        report += f"There are {len(subdomains)} ics.uci.edu subdomains:\n"
-        for d, c in subdomains:
-            report += f"{d}, {c}\n"
-        save_count, save_time = s["save_count_time"]
-        report += f"Spent {save_time}s saving Statistics files {save_count} times.\n"
-        report += "----- End Crawl Report -----\n"
-        # Write into regular file
-        with open("summary.txt", "w", encoding="utf-8") as file:
-            file.write(report)
+        try:
+            s = self.statistics.summary(domain_root="ics.uci.edu")
+            report, report_time = "", time.time()
+            report += f"----- Begin Crawl Report: {report_time} -----\n"
+            report += f"We found {s['unique_page_count']} unique pages.\n"
+            page, size = s["longest_page"]
+            report += f"The longest page is {page} with {size} words.\n"
+            report += "The top few words are:\n"
+            for w, c in s["top_k_words"]:
+                report += f"{w}, {c}\n"
+            subdomains = s["ics_subdomain_pagecounts"]
+            report += f"There are {len(subdomains)} ics.uci.edu subdomains:\n"
+            for d, c in subdomains:
+                report += f"{d}, {c}\n"
+            save_count, save_time = s["save_count_time"]
+            report += f"Spent {save_time}s saving Statistics files {save_count} times.\n"
+            report += "----- End Crawl Report -----\n"
+            # Write into regular file
+            with open("summary.txt", "w", encoding="utf-8") as file:
+                file.write(report)
+        except Exception as e:
+            self.logger.error(f"Failed to write summary report: {e}")
 
     def join(self):
         for worker in self.workers:
