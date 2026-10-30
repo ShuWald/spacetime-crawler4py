@@ -41,8 +41,8 @@ class Crawler(object):
     def printSummary(self):
         try:
             s = self.statistics.summary(domain_root="ics.uci.edu")
-            report, report_time = "", time.time()
-            report += f"----- Begin Crawl Report: {report_time} -----\n"
+            report = ""
+            report += f"----- Begin Crawl Report -----\n"
             report += f"We found {s['unique_page_count']} unique pages.\n"
             page, size = s["longest_page"]
             report += f"The longest page is {page} with {size} words.\n"
@@ -55,6 +55,8 @@ class Crawler(object):
                 report += f"{d}, {c}\n"
             save_count, save_time = s["save_count_time"]
             report += f"Spent {save_time}s saving Statistics files {save_count} times.\n"
+            ingest_count, ingest_time = s["ingest_count_time"]
+            report += f"Spent {ingest_time}s processing ingested files {ingest_count} times.\n"
             report += "----- End Crawl Report -----\n"
             # Write into regular file
             with open("summary.txt", "w", encoding="utf-8") as file:

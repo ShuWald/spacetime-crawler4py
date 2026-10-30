@@ -51,15 +51,18 @@ def scraper(url, resp, statistics, robots_allowed, logger = None):
     # If there are no errors can scrape URLs
     if "error" not in scraped_result:
         parser = bs4.BeautifulSoup(resp.raw_response.content, "html.parser")
-        page_is_unique = statistics.ingest(resp.url, parser)
+        result = statistics.ingest(resp.url, parser)
 
-        links = extract_next_links(resp, parser, (contains_date(resp.url) or contains_date(url)))
-
-        if page_is_unique:
+        if result == "extract":
+            links = extract_next_links(resp, parser, (contains_date(resp.url) or contains_date(url)))
             scraped_result["urls"] = links
-        else:
+        elif result == "duplicate":
             if logger != None:
                 logger.info(f"Ignored links from {url} due to similarity")
+            scraped_result["urls"] = []
+        else:
+            if logger != None:
+                logger.info(f"Ignored links from {url} due to {result}")
             scraped_result["urls"] = []
     return scraped_result
 
