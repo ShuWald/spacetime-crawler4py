@@ -95,98 +95,60 @@ class Statistics:
             text = text.replace("\t", " ")
             text = text.replace("\r", " ")
 
-            count_ufffd = text.count("\ufffd")
             OGlen = len(text)
             clean_text = ""
+            keys = ["ufffd", "invalid", "special", "stop words", "average word length"]
+            counts = {k: 0 for k in keys}   # note that average word length count just stores total length of all words
+            proportions = {k: 0 for k in keys}
+            
+            # note that average word upper bound is implemented manually (alternatives possible)
+            thresholds_nums = [0.05, 0.1, 0.5, 0.1, 3.0]
+            average_word_length_upper = 25.0
+            thresholds = {k: v for k, v in zip(keys, thresholds_nums)}
 
-            count_invalid_ch = 0
-            special_char_count = 0
-            invalid_ch_threshold = 0.1
-            ufffd_threshold = 0.05
-            special_char_threshold = 0.5
-
+            #\#-- ufffd, invalid, and special counts and proportions
+            counts["ufffd"] = text.count("\ufffd")
             for ch in text:
                 # invalid if not printable ASCII (within range of 32 to 126)
                 if ch != "\n" and not (32<= ord(ch) <= 126):
-                    count_invalid_ch += 1
+                    counts["invalid"] += 1
                 else:
                     # Filter out invalids for words later?
                     clean_text += ch
                     # find special characters within printable ASCII
                     if not ch.isalnum() and not ch.isspace():
-                        special_char_count += 1
+                        counts["special"] += 1
 
-            # find ufffd, invalid, and special character proportions
-            if OGlen > 0:
-                ufffd_proportion = count_ufffd / OGlen
-                invalid_ch_proportion = count_invalid_ch/OGlen
-                special_char_proportion = special_char_count/OGlen
-            # Avoid divide by zero
-            else:
-                invalid_ch_proportion = 0
-                special_char_proportion = 0
-                ufffd_proportion = 0
+            for key in keys[:3]:
+                proportions[key] = counts[key] / OGlen if OGlen > 0 else 0
+                self._logger.debug(f"URL: {url}, {key} prop: {proportions[key]}, ")
+            #\#--
 
-            # URL rejections
-            # record -> reject URL: ___ due to value out of bounds 
-            # URL: invalid, special, replace, stopwords, average word length 
-            self._logger.debug(f"URL: {url}, invalid prop: {invalid_ch_proportion}, ")
-            self._logger.debug(f"URL: {url}, special prop: {special_char_proportion}, ")
-            self._logger.debug(f"URL: {url}, replace prop: {ufffd_proportion}, ")
-            
-
-            # check ufffd, invalid, and special character proportions against thresholds
-
-
-            # Changed from text to clean_text here to avoid invalid characters, is that correct?
+            #/#-- stop words and average word length counts and proportions
             words: list[str] = self.re_word.findall(clean_text)
             word_count = len(words)
 
-            stop_words_count = 0
-            total_character_count = 0 
-
             for word in words:
                 if word.lower() in self._stopwords:
-                    stop_words_count += 1 
-                total_character_count += len(word)
-            if word_count > 0:
-                stop_words_proportion = stop_words_count/ word_count
-                avg_word_len = total_character_count/word_count
-            # For divide by zero errors
-            else:
-                stop_words_proportion, avg_word_len = 0, 0
+                    counts["stop words"] += 1 
+                counts["average word length"] += len(word)
 
-            self._logger.debug(f"URL: {url}, stopwords prop: {stop_words_proportion}, ")
-            self._logger.debug(f"URL: {url}, avg word length: {avg_word_len}")
+            for key in keys[3:]:
+                proportions[key] = counts[key] / word_count if word_count > 0 else 0
+                self._logger.debug(f"URL: {url}, {key} prop: {proportions[key]}, ")
+            #/#--
 
-            if(ufffd_proportion > ufffd_threshold):
-                self._logger.info(f"{url} rejected due to exceeding max bound of replacement characters: {ufffd_proportion} exceeded threshold {ufffd_threshold}")
-                return False
-                        
-            if(special_char_proportion > special_char_threshold):
-                self._logger.info(f"{url} rejected due to special character proportion {special_char_proportion} exceeded threshold {special_char_threshold}")
-                return False
-            if(invalid_ch_proportion > invalid_ch_threshold):
-                self._logger.info(f"{url} rejected due to invalid character proportion: {invalid_ch_proportion} exceeded threshold {invalid_ch_threshold}") 
-                return False
+            ##--/ log and check thresholds, if any threshold exceeded, reject page
+            for key, value in proportions.items():
+                if proportions[key] > thresholds[key]:
+                    self._logger.info(f"{url} rejected due to {key} {"character " if key in keys[:3] else ""}proportion: {value} exceeded threshold {thresholds[key]}")
+                    return False
 
-            stop_words_lower, stop_words_upper = 0.1, 1.0   # Do we need a stopwords upper bound? (Mark's example)
-            avg_char_per_word_lower, avg_char_per_word_upper = 3.0, 25.0
-
-            if (stop_words_proportion < stop_words_lower):
-                self._logger.info(f"{url} rejected due to stopword proportion {stop_words_proportion} below min threshold {stop_words_lower}")
+            # Manually check average word length upper threshold, alternative solutions possible
+            if (proportions["average word length"] > average_word_length_upper):
+                self._logger.info(f"{url} rejected due to average word length {proportions['average word length']} above max threshold {average_word_length_upper}")
                 return False
-            if (stop_words_proportion > stop_words_upper):
-                self._logger.info(f"{url} rejected due to stopword proportion {stop_words_proportion} above max threshold {stop_words_upper}")
-                return False
-
-            if (avg_word_len < avg_char_per_word_lower):
-                self._logger.info(f"{url} rejected due to average word length {avg_word_len} below min threshold {avg_char_per_word_lower}")
-                return False
-
-            if (avg_word_len > avg_char_per_word_upper):
-                self._logger.info(f"{url} rejected due to average word length {avg_word_len} above max threshold {avg_char_per_word_upper}")
-                return False
+            ##--/ 
 
 
             word_frequencies = dict(Counter(w.lower() for w in words))
