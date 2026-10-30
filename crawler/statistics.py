@@ -194,6 +194,7 @@ class Statistics:
                 return not has_similar # most instances will let this drop, but ingest will return False if a given url/page is not unique
         except Exception as e:
             self._logger.error(f"Unforseen error ingesting {url}: {e}")
+            return True # If the recent statistics ingestion causes major errors at least read all url rather than rejecting everything
 
     """Returns an anonymous statistics object with no file to save at."""
     def union(self, other: 'Statistics') -> 'Statistics':
