@@ -119,19 +119,19 @@ class Statistics:
                         count_stop_words += 1
                     count_words_length += len(word)
 
-                rate_chars_ufffd = count_chars_ufffd / count_chars
-                rate_chars_nonprintable = count_chars_ufffd / count_chars
-                rate_chars_special = count_chars_special / count_chars
-                rate_stop_words = count_stop_words / count_words
-                rate_words_length = count_words_length / count_words
+                rate_chars_ufffd = count_chars_ufffd / count_chars if count_chars else 0
+                rate_chars_nonprintable = count_chars_nonprintable / count_chars if count_chars else 0
+                rate_chars_special = count_chars_special / count_chars if count_chars else 0
+                rate_stop_words = count_stop_words / count_words if count_chars else 0
+                rate_words_length = count_words_length / count_words if count_chars else 0
 
                 self._logger.debug(f"Page Characteristics of {url} | {count_words} words, {count_chars} characters | {rate_chars_ufffd} ufffd rate, {rate_chars_nonprintable} nonprintable rate, {rate_chars_special} special character rate, {rate_stop_words} stopwords rate, {rate_words_length} word length")
 
                 okay = False
                 if rate_chars_ufffd > 0.05: self._logger.debug(f"Reject URL {url}: ufffd rate {rate_chars_ufffd} > 0.05")
-                elif rate_chars_nonprintable > 0.1: self._logger.debug(f"Reject URL {url}: nonprintable rate {rate_chars_ufffd} > 0.1")
-                elif rate_chars_special > 0.5: self._logger.debug(f"Reject URL {url}: special rate {rate_chars_ufffd} > 0.5")
-                elif rate_stop_words < 0.1: self._logger.debug(f"Reject URL {url}: stopwords rate {rate_chars_ufffd} < 0.5")
+                elif rate_chars_nonprintable > 0.1: self._logger.debug(f"Reject URL {url}: nonprintable rate {rate_chars_nonprintable} > 0.1")
+                elif rate_chars_special > 0.5: self._logger.debug(f"Reject URL {url}: special rate {rate_chars_special} > 0.5")
+                elif rate_stop_words < 0.1: self._logger.debug(f"Reject URL {url}: stopwords rate {rate_stop_words} < 0.1")
                 elif rate_words_length < 3.0: self._logger.debug(f"Reject URL {url}: word length {rate_words_length} < 3.0")
                 elif rate_words_length > 25.0: self._logger.debug(f"Reject URL {url}: word length {rate_words_length} > 25.0")
                 else:
