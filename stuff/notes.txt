@@ -1,8 +1,0 @@
-Requirements from lecture:
-- handle websites with tarpits
-- handle server not responding / high latency
-- handle cache server control-C
-- handle repetitive, highly similar, or dead pages
-- detect redirects
-- maintain politeness delay
-- avoid crawling large files with low information value
